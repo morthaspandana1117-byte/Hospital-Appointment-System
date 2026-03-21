@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Doctor Dashboard</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h2>Doctor Dashboard</h2>
+
+    <table class="table" border="1">
+        <tr>
+            <th>Patient</th>
+            <th>Problem</th>
+            <th>Time</th>
+            <th>Status</th>
+        </tr>
+
+        {% for appointment in appointments %}
+        <tr>
+            <td>{{ appointment.patient.user.username }}</td>
+            <td>{{ appointment.problem }}</td>
+            <td>{{ appointment.time|time:"h:i A" }}</td>
+
+            <td>
+                {{ appointment.status }}
+
+                {% if appointment.status == "Pending" %}
+                    <br><br>
+                    <a href="{% url 'accept' appointment.id %}">
+                        <button>Accept</button>
+                    </a>
+
+                    <a href="{% url 'reject' appointment.id %}">
+                        <button>Reject</button>
+                    </a>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" style="text-align:center;">
+                No appointments available.
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+
+    <a href="{% url 'logout' %}">
+        <button>Logout</button>
+    </a>
+
+</div>
+
+</body>
+</html>

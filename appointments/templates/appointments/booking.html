@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Book Appointment</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <div class="form-card">
+        <h2>Book Appointment</h2>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <input type="text" name="name" placeholder="Patient Name" required>
+            <input type="number" name="age" placeholder="Age" required>
+
+            <textarea name="problem" placeholder="Describe your problem" required></textarea>
+
+            <!-- ✅ FIXED TIME VALUES -->
+            <select name="time" required>
+                <option value="">Select Time Slot</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="10:30">10:30 AM</option>
+                <option value="11:00">11:00 AM</option>
+            </select>
+
+            <select name="doctor" required>
+                <option value="">Select Doctor</option>
+                {% for doctor in doctors %}
+                <option value="{{ doctor.id }}">
+                    Dr. {{ doctor.user.username }} - {{ doctor.specialization }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <button class="btn btn-primary" type="submit">
+                Book Appointment
+            </button>
+        </form>
+
+        <br>
+
+        <a href="{% url 'patient-dashboard' %}">
+            <button class="btn btn-danger">Back to Dashboard</button>
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

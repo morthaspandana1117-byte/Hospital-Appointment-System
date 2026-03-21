@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Doctor Profile</title>
+  <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+</head>
+<body>
+
+<div class="container">
+  <h2>Complete Your Doctor Profile</h2>
+
+  <div class="form-card">
+    <form method="POST">
+      {% csrf_token %}
+
+      <input type="text" value="{{ request.user.username }}" disabled>
+
+      <input type="text" name="specialization"
+             value="{{ doctor.specialization }}"
+             placeholder="Specialization" required>
+
+      <input type="text" name="working_hours"
+             value="{{ doctor.working_hours }}"
+             placeholder="Working Hours" required>
+
+      <button class="btn btn-primary" type="submit">
+        Save Profile
+      </button>
+    </form>
+  </div>
+
+  <br>
+
+  <a href="{% url 'doctor-dashboard' %}">
+    <button class="btn btn-danger">Back</button>
+  </a>
+</div>
+
+</body>
+</html>

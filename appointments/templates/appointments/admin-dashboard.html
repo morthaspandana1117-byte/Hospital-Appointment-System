@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h2>Admin Dashboard</h2>
+
+    <table class="table" border="1">
+        <tr>
+            <th>Patient</th>
+            <th>Doctor</th>
+            <th>Problem</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+
+        {% for appointment in appointments %}
+        <tr>
+            <td>{{ appointment.patient.user.username }}</td>
+            <td>{{ appointment.doctor.user.username }}</td>
+            <td>{{ appointment.problem }}</td>
+            <td>{{ appointment.time|time:"h:i A" }}</td>
+            <td>{{ appointment.status }}</td>
+
+            <td>
+                {% if appointment.status == "Accepted" or appointment.status == "Rejected" %}
+                    <a href="{% url 'send-email' appointment.id %}">
+                        <button>Send Email</button>
+                    </a>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" style="text-align:center;">
+                No appointments available.
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+
+    <a href="{% url 'logout' %}">
+        <button>Logout</button>
+    </a>
+
+</div>
+
+</body>
+</html>
