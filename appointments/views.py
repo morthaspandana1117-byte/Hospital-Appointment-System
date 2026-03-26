@@ -6,7 +6,6 @@ from django.core.mail import send_mail
 from .models import Patient, Doctor, Appointment
 from django.conf import settings
 
-
 # ---------------- REGISTER ----------------
 def register_view(request):
     if request.method == "POST":
@@ -209,18 +208,42 @@ Hospital Appointment System
 def edit_profile(request):
     user = request.user
 
+    current_role = 'admin' if user.is_superuser else ('doctor' if hasattr(user, 'doctor') else ('patient' if hasattr(user, 'patient') else ''))
     if request.method == "POST":
         username = request.POST['username']
         email = request.POST['email']
         password = request.POST.get('password')
-
         user.username = username
         user.email = email
-
         if password:
             user.set_password(password)
-
         user.save()
+
+        # Update doctor specialization if applicable
+        if hasattr(user, 'doctor'):
+            doctor = user.doctor
+            doctor.specialization = request.POST.get('specialization', '')
+            doctor.working_hours = request.POST.get('working_hours', '')
+            doctor.save()
+
+        new_role = request.POST.get('role')
+        if new_role and new_role != current_role:
+            if current_role == 'patient':
+                user.patient.delete()
+            elif current_role == 'doctor':
+                user.doctor.delete()
+            elif current_role == 'admin':
+                user.is_superuser = False
+                user.is_staff = False
+                user.save()
+            if new_role == 'patient':
+                Patient.objects.create(user=user)
+            elif new_role == 'doctor':
+                Doctor.objects.create(user=user)
+            elif new_role == 'admin':
+                user.is_superuser = True
+                user.is_staff = True
+                user.save()
 
         if user.is_superuser:
             return redirect('admin-dashboard')
@@ -228,5 +251,5 @@ def edit_profile(request):
             return redirect('doctor-dashboard')
         else:
             return redirect('patient-dashboard')
+    return render(request, 'appointments/profile.html', {'user': user, 'role': current_role})
 
-    return render(request, 'edit-profile.html')

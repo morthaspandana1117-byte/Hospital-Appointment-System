@@ -2,26 +2,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My Profile</title>
-  <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+  <title>Update Profile</title>
+  <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n  <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+  <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
 <div class="container">
-  <h2>My Profile</h2>
+  <h2>Update Profile</h2>
 
   <div class="form-card">
     <form method="POST">
       {% csrf_token %}
 
-      <input type="text" value="{{ request.user.username }}" disabled>
+      <label for="username">Username:</label>
+      <input type="text" name="username" value="{{ user.username }}" required>
 
-      <input type="email" name="email" value="{{request.user.email}}" required>
+      <label for="email">Email:</label>
+      <input type="email" name="email" value="{{ user.email }}" required>
 
-      <input type="password" name="password" placeholder="New Password">
+      <p><strong>Current Role:</strong> {{ role }}</p>
+      <label for="role">Change Role (Warning: may lose appointments):</label>
+      <select name="role" id="role" required>
+        <option value="">-- Select --</option>
+        <option value="patient" {% if role == 'patient' %}selected{% endif %}>Patient</option>
+        <option value="doctor" {% if role == 'doctor' %}selected{% endif %}>Doctor</option>
+        <option value="admin" {% if role == 'admin' %}selected{% endif %}>Admin</option>
+      </select>
+
+      {% if role == 'doctor' %}
+        <label for="specialization">Specialization:</label>
+        <input type="text" name="specialization" value="{{ user.doctor.specialization }}" placeholder="e.g. Cardiology">
+        <label for="working_hours">Working Hours:</label>
+        <input type="text" name="working_hours" value="{{ user.doctor.working_hours }}" placeholder="e.g. 9AM-5PM">
+      {% endif %}
+
+      <label for="password">New Password (optional):</label>
+      <input type="password" name="password" placeholder="Leave blank to keep current">
 
       <button class="btn btn-primary" type="submit">
-        Update Password
+        Update Profile
       </button>
     </form>
   </div>
@@ -35,3 +55,4 @@
 
 </body>
 </html>
+

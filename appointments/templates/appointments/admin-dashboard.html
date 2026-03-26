@@ -3,7 +3,7 @@
 <html>
 <head>
     <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
@@ -47,11 +47,7 @@
         {% endfor %}
     </table>
 
-    <br>
-
-    <a href="{% url 'logout' %}">
-        <button>Logout</button>
-    </a>
+    <br>\n\n    <a href="{% url 'profile' %}">\n        <button>Update Profile</button>\n    </a>\n    <br>\n    <a href="{% url 'logout' %}">\n        <button>Logout</button>\n    </a>
 
 </div>
 

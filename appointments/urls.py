@@ -22,5 +22,5 @@ urlpatterns = [
 
     path('send-email/<int:appointment_id>/', views.send_status_email, name='send-email'),
 
-    path('edit-profile/', views.edit_profile, name='edit-profile'),
+    path('profile/', views.edit_profile, name='profile'),
 ]
