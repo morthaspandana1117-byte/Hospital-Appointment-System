@@ -12,13 +12,16 @@ urlpatterns = [
     path('doctor-dashboard/', views.doctor_dashboard, name='doctor-dashboard'),
     path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
 
+    path('assign-doctor/<int:id>/', views.assign_doctor, name='assign-doctor'),
+    path('cancel/<int:id>/', views.cancel_appointment, name='cancel-appointment'),
+
     path('booking/', views.booking_view, name='booking'),
     path('cancel/<int:appointment_id>/', views.cancel_appointment, name='cancel-appointment'),
 
     path('doctor-details/', views.doctor_details, name='doctor-details'),
 
-    path('accept/<int:appointment_id>/', views.accept_appointment, name='accept'),
-    path('reject/<int:appointment_id>/', views.reject_appointment, name='reject'),
+    path('accept/<int:id>/', views.accept, name='accept'),
+    path('reject/<int:id>/', views.reject, name='reject'),
 
     path('send-email/<int:appointment_id>/', views.send_status_email, name='send-email'),
 

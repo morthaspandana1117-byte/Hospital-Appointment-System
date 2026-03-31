@@ -29,13 +29,36 @@
             <td>{{ appointment.status }}</td>
 
             <td>
-                {% if appointment.status == "Accepted" or appointment.status == "Rejected" %}
-                    <a href="{% url 'send-email' appointment.id %}">
-                        <button>Send Email</button>
-                    </a>
+                {% if appointment.status == "Pending" %}
+                    <form method="POST" action="{% url 'assign-doctor' appointment.id %}">
+                        {% csrf_token %}
+
+                        <select name="doctor" required>
+                            <option value="">Select Doctor</option>
+                            {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}">
+                                Dr. {{ doctor.user.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+
+                        <input type="time" name="time" required>
+
+                        <button class="btn btn-primary" type="submit">
+                            Assign
+                        </button>
+                    </form>
                 {% else %}
-                    -
+                    Assigned
                 {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'cancel-appointment' appointment.id %}">
+                    <button class="btn btn-danger">Cancel</button>
+                </a>
+            </td>
+            <td class="status-{{ appointment.status|lower }}">
+                {{ appointment.status }}
             </td>
         </tr>
         {% empty %}

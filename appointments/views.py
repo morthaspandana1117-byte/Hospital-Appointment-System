@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from .models import Patient, Doctor, Appointment
 from django.conf import settings
+from .models import Appointment, Doctor
 
 # ---------------- REGISTER ----------------
 def register_view(request):
@@ -69,26 +70,23 @@ def logout_view(request):
 # ---------------- BOOKING ----------------
 @login_required
 def booking_view(request):
-    doctors = Doctor.objects.all()
 
     if request.method == "POST":
-        doctor_id = request.POST['doctor']
-        problem = request.POST['problem']
-        time = request.POST['time']
+        problem = request.POST.get('problem')
+        date = request.POST.get('date')
 
-        doctor = Doctor.objects.get(id=doctor_id)
         patient = request.user.patient
 
         Appointment.objects.create(
             patient=patient,
-            doctor=doctor,
             problem=problem,
-            time=time
+            date=date,
+            status="Pending"
         )
 
         return redirect('patient-dashboard')
 
-    return render(request, "appointments/booking.html", {"doctors": doctors})
+    return render(request, "appointments/booking.html")
 
 
 # ---------------- PATIENT DASHBOARD ----------------
@@ -103,8 +101,12 @@ def patient_dashboard(request):
 @login_required
 def doctor_dashboard(request):
     doctor = request.user.doctor
+
     appointments = Appointment.objects.filter(doctor=doctor)
-    return render(request, "appointments/doctor-dashboard.html", {"appointments": appointments})
+
+    return render(request, "appointments/doctor-dashboard.html", {
+        "appointments": appointments
+    })
 
 
 # ---------------- DOCTOR PROFILE ----------------
@@ -128,24 +130,29 @@ def admin_dashboard(request):
         return redirect('login')
 
     appointments = Appointment.objects.all()
-    return render(request, "appointments/admin-dashboard.html", {"appointments": appointments})
+    doctors = Doctor.objects.all()
+
+    return render(request, "appointments/admin-dashboard.html", {
+        "appointments": appointments,
+        "doctors": doctors
+    })
 
 
 # ---------------- ACCEPT ----------------
-@login_required
-def accept_appointment(request, appointment_id):
-    appointment = get_object_or_404(Appointment, id=appointment_id, doctor=request.user.doctor)
+def accept(request, id):
+    appointment = Appointment.objects.get(id=id)
     appointment.status = "Accepted"
     appointment.save()
+
     return redirect('doctor-dashboard')
 
 
 # ---------------- REJECT ----------------
-@login_required
-def reject_appointment(request, appointment_id):
-    appointment = get_object_or_404(Appointment, id=appointment_id, doctor=request.user.doctor)
+def reject(request, id):
+    appointment = Appointment.objects.get(id=id)
     appointment.status = "Rejected"
     appointment.save()
+
     return redirect('doctor-dashboard')
 
 
@@ -253,3 +260,25 @@ def edit_profile(request):
             return redirect('patient-dashboard')
     return render(request, 'appointments/profile.html', {'user': user, 'role': current_role})
 
+def assign_doctor(request, id):
+    appointment = Appointment.objects.get(id=id)
+
+    if request.method == "POST":
+        doctor_id = request.POST.get('doctor')
+        time = request.POST.get('time')
+
+        doctor = Doctor.objects.get(id=doctor_id)
+
+        appointment.doctor = doctor
+        appointment.time = time
+        appointment.status = "Assigned"
+        appointment.save()
+
+    return redirect('admin-dashboard')
+
+def cancel_appointment(request, id):
+    appointment = Appointment.objects.get(id=id)
+    appointment.status = "Cancelled"
+    appointment.save()
+
+    return redirect('admin-dashboard')

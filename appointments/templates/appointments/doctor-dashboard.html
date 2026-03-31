@@ -24,17 +24,17 @@
             <td>{{ appointment.problem }}</td>
             <td>{{ appointment.time|time:"h:i A" }}</td>
 
-            <td>
+            <td class="status-{{ appointment.status|lower }}">
                 {{ appointment.status }}
 
-                {% if appointment.status == "Pending" %}
+                {% if appointment.status == "Assigned" %}
                     <br><br>
                     <a href="{% url 'accept' appointment.id %}">
-                        <button>Accept</button>
+                        <button class="btn btn-primary">Accept</button>
                     </a>
 
                     <a href="{% url 'reject' appointment.id %}">
-                        <button>Reject</button>
+                        <button class="btn btn-danger">Reject</button>
                     </a>
                 {% endif %}
             </td>

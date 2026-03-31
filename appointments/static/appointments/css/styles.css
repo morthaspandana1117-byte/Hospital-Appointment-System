@@ -233,3 +233,16 @@ label {
   transform: translateY(0);
 }
 
+button {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: none;
+  background: #4a90e2;
+  color: white;
+  cursor: pointer;
+  margin: 3px;
+}
+
+button:hover {
+  background: #357abd;
+}

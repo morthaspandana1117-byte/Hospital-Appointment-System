@@ -9,10 +9,11 @@
 
 <div class="container">
     <h2>My Appointments</h2>
-
-    <a href="{% url 'booking' %}">
-        <button>Book New Appointment</button>
+    <div style="margin-top: 20px;">
+        <a href="{% url 'booking' %}">
+        <button class="btn btn-primary">Book New Appointment</button>
     </a>
+    </div>
 
     <br><br>
 
@@ -41,6 +42,9 @@
                     -
                 {% endif %}
             </td>
+            <td class="status-{{ appointment.status|lower }}">
+                {{ appointment.status }}
+            </td>
         </tr>
         {% empty %}
         <tr>
@@ -51,7 +55,17 @@
         {% endfor %}
     </table>
 
-    <br>\n\n    <a href="{% url 'profile' %}">\n        <button>Update Profile</button>\n    </a>\n    <br>\n    <a href="{% url 'logout' %}">\n        <button>Logout</button>\n    </a>
+    <div style="margin-top: 20px;">
+
+        <a href="{% url 'profile' %}">
+            <button class="btn btn-primary">Update Profile</button>
+        </a>
+
+        <a href="{% url 'logout' %}">
+            <button class="btn btn-danger">Logout</button>
+        </a>
+
+    </div>
 
 </div>
 

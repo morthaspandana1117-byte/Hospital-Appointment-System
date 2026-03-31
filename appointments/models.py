@@ -28,14 +28,11 @@ class Appointment(models.Model):
     ]
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     problem = models.TextField()
-    time = models.TimeField()
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='Pending'
-    )
+    doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
+    time = models.TimeField(null=True, blank=True)
+    date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, default="Pending")
 
     def __str__(self):
         return f"{self.patient} - {self.doctor}"

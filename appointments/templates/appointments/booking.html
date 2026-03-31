@@ -19,22 +19,7 @@
 
             <textarea name="problem" placeholder="Describe your problem" required></textarea>
 
-            <!-- ✅ FIXED TIME VALUES -->
-            <select name="time" required>
-                <option value="">Select Time Slot</option>
-                <option value="10:00">10:00 AM</option>
-                <option value="10:30">10:30 AM</option>
-                <option value="11:00">11:00 AM</option>
-            </select>
-
-            <select name="doctor" required>
-                <option value="">Select Doctor</option>
-                {% for doctor in doctors %}
-                <option value="{{ doctor.id }}">
-                    Dr. {{ doctor.user.username }} - {{ doctor.specialization }}
-                </option>
-                {% endfor %}
-            </select>
+            <input type="date" name="date" required>
 
             <button class="btn btn-primary" type="submit">
                 Book Appointment
