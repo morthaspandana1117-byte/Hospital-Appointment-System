@@ -14,6 +14,12 @@
         <p style="color:red;">{{ error }}</p>
     {% endif %}
 
+    {% if messages %}
+        {% for message in messages %}
+            <p style="color:red;">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
     <form method="POST">
         {% csrf_token %}
         <input type="text" name="username" placeholder="Username" required>

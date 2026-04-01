@@ -3,14 +3,15 @@
 <html>
 <head>
     <title>Register</title>
-    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
 <div class="login-box">
     <h2>Create Account</h2>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         
         <input type="text" name="username" placeholder="Username" required>
@@ -21,11 +22,18 @@
         
         <input type="password" name="password" placeholder="Password" required>
 
-        <select name="role" required>
+        <select name="role" id="roleSelect" required>
             <option value="">Select Role</option>
             <option value="patient">Patient</option>
             <option value="doctor">Doctor</option>
         </select>
+
+        <!-- Doctor Fields -->
+        <div id="doctorFields" style="display:none;">
+            <input type="text" name="specialization" placeholder="Specialization">
+            
+            <input type="file" name="certificate" accept=".pdf">
+        </div>
 
         <button class="btn btn-primary" type="submit">Register</button>
     </form>
@@ -34,6 +42,20 @@
         <a href="{% url 'login' %}">Back to Login</a>
     </p>
 </div>
+
+<!-- JS to show doctor fields -->
+<script>
+    const roleSelect = document.getElementById("roleSelect");
+    const doctorFields = document.getElementById("doctorFields");
+
+    roleSelect.addEventListener("change", function () {
+        if (this.value === "doctor") {
+            doctorFields.style.display = "block";
+        } else {
+            doctorFields.style.display = "none";
+        }
+    });
+</script>
 
 </body>
 </html>

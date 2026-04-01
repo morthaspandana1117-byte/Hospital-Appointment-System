@@ -1,3 +1,4 @@
+import os
 """
 Django settings for hospital_backend project.
 
@@ -129,3 +130,6 @@ STATICFILES_DIRS = [
 # EMAIL_HOST_PASSWORD = 'your_app_password'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

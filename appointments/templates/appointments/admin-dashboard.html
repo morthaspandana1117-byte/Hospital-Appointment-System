@@ -3,12 +3,16 @@
 <html>
 <head>
     <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
 <div class="container">
     <h2>Admin Dashboard</h2>
+
+    <!-- ================= APPOINTMENTS ================= -->
+    <h3>Appointment Requests</h3>
 
     <table class="table" border="1">
         <tr>
@@ -18,15 +22,30 @@
             <th>Time</th>
             <th>Status</th>
             <th>Action</th>
+            <th>Cancel</th>
         </tr>
 
         {% for appointment in appointments %}
         <tr>
             <td>{{ appointment.patient.user.username }}</td>
-            <td>{{ appointment.doctor.user.username }}</td>
+            <td>
+                {% if appointment.doctor %}
+                    Dr. {{ appointment.doctor.user.username }}
+                {% else %}
+                    Not Assigned
+                {% endif %}
+            </td>
             <td>{{ appointment.problem }}</td>
-            <td>{{ appointment.time|time:"h:i A" }}</td>
-            <td>{{ appointment.status }}</td>
+            <td>
+                {% if appointment.time %}
+                    {{ appointment.time|time:"h:i A" }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td class="status-{{ appointment.status|lower }}">
+                {{ appointment.status }}
+            </td>
 
             <td>
                 {% if appointment.status == "Pending" %}
@@ -52,25 +71,82 @@
                     Assigned
                 {% endif %}
             </td>
+
             <td>
                 <a href="{% url 'cancel-appointment' appointment.id %}">
                     <button class="btn btn-danger">Cancel</button>
                 </a>
             </td>
-            <td class="status-{{ appointment.status|lower }}">
-                {{ appointment.status }}
-            </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6" style="text-align:center;">
+            <td colspan="7" style="text-align:center;">
                 No appointments available.
             </td>
         </tr>
         {% endfor %}
     </table>
 
-    <br>\n\n    <a href="{% url 'profile' %}">\n        <button>Update Profile</button>\n    </a>\n    <br>\n    <a href="{% url 'logout' %}">\n        <button>Logout</button>\n    </a>
+    <!-- ================= DOCTOR VERIFICATION ================= -->
+    <h3>Doctor Verification</h3>
+
+    <table class="table" border="1">
+        <tr>
+            <th>Name</th>
+            <th>Specialization</th>
+            <th>Certificate</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+
+        {% for doctor in doctors %}
+        <tr>
+            <td>{{ doctor.user.username }}</td>
+            <td>{{ doctor.specialization }}</td>
+
+            <td>
+                {% if doctor.certificate %}
+                    <a href="{{ doctor.certificate.url }}" target="_blank">
+                        View Certificate
+                    </a>
+                {% else %}
+                    No file
+                {% endif %}
+            </td>
+
+            <td>
+                {% if doctor.is_verified %}
+                    <span style="color:green;">Verified</span>
+                {% else %}
+                    <span style="color:red;">Not Verified</span>
+                {% endif %}
+            </td>
+
+            <td>
+                {% if not doctor.is_verified %}
+                    <a href="{% url 'verify-doctor' doctor.id %}">
+                        <button class="btn btn-primary">Verify</button>
+                    </a>
+                {% else %}
+                    ✔
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br><br>
+
+    <!-- ================= ACTION BUTTONS ================= -->
+    <a href="{% url 'profile' %}">
+        <button class="btn btn-primary">Update Profile</button>
+    </a>
+
+    <br><br>
+
+    <a href="{% url 'logout' %}">
+        <button class="btn btn-danger">Logout</button>
+    </a>
 
 </div>
 

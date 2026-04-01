@@ -17,6 +17,10 @@ class Doctor(models.Model):
 
     def __str__(self):
         return self.user.username
+    
+
+    certificate = models.FileField(upload_to='certificates/', null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
 
 
 class Appointment(models.Model):

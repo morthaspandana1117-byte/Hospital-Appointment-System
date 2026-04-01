@@ -6,18 +6,25 @@ from django.core.mail import send_mail
 from .models import Patient, Doctor, Appointment
 from django.conf import settings
 from .models import Appointment, Doctor
+from django.contrib import messages
 
 # ---------------- REGISTER ----------------
 def register_view(request):
     if request.method == "POST":
-        username = request.POST['username']
-        email = request.POST['email']
-        phone = request.POST['phone']
-        password = request.POST['password']
-        role = request.POST['role']
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        phone = request.POST.get('phone')
+        password = request.POST.get('password')
+        role = request.POST.get('role')
+
+        # Doctor fields
+        specialization = request.POST.get('specialization')
+        certificate = request.FILES.get('certificate')
 
         if User.objects.filter(username=username).exists():
-            return render(request, "appointments/register.html", {"error": "Username already exists"})
+            return render(request, "appointments/register.html", {
+                "error": "Username already exists"
+            })
 
         user = User.objects.create_user(
             username=username,
@@ -31,12 +38,19 @@ def register_view(request):
             return redirect('patient-dashboard')
 
         elif role == "doctor":
-            Doctor.objects.create(user=user)
-            login(request, user)
-            return redirect('doctor-dashboard')
+            Doctor.objects.create(
+                user=user,
+                specialization=specialization,
+                certificate=certificate,
+                is_verified=False   # 🔥 important
+            )
+
+            # ❌ Do NOT login doctor immediately
+            return render(request, "appointments/login.html", {
+                "message": "Registration successful. Wait for admin verification."
+            })
 
     return render(request, "appointments/register.html")
-
 
 # ---------------- LOGIN ----------------
 def login_view(request):
@@ -47,16 +61,28 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
+
+            # 🔥 Check doctor verification BEFORE login
+            if hasattr(user, 'doctor'):
+                if not user.doctor.is_verified:
+                    messages.error(request, "Your account is not verified by admin yet.")
+                    return redirect('login')
+
             login(request, user)
 
             if user.is_superuser:
                 return redirect('admin-dashboard')
+
             elif hasattr(user, 'patient'):
                 return redirect('patient-dashboard')
+
             elif hasattr(user, 'doctor'):
                 return redirect('doctor-dashboard')
 
-        return render(request, "appointments/login.html", {"error": "Invalid credentials"})
+        else:
+            return render(request, "appointments/login.html", {
+                "error": "Invalid credentials"
+            })
 
     return render(request, "appointments/login.html")
 
@@ -280,5 +306,28 @@ def cancel_appointment(request, id):
     appointment = Appointment.objects.get(id=id)
     appointment.status = "Cancelled"
     appointment.save()
+
+    return redirect('admin-dashboard')
+
+def verify_doctor(request, id):
+    doctor = Doctor.objects.get(id=id)
+    doctor.is_verified = True
+    doctor.save()
+
+    return redirect('admin-dashboard')
+
+def manage_users(request):
+    patients = Patient.objects.all()
+    doctors = Doctor.objects.all()
+
+    return render(request, "appointments/manage_users.html", {
+        "patients": patients,
+        "doctors": doctors
+    })
+
+def verify_doctor(request, id):
+    doctor = Doctor.objects.get(id=id)
+    doctor.is_verified = True
+    doctor.save()
 
     return redirect('admin-dashboard')

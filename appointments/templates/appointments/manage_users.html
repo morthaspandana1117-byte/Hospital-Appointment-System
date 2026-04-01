@@ -1,0 +1,37 @@
+<h2>Patients</h2>
+<table class="table">
+<tr>
+    <th>Name</th>
+    <th>No. of Appointments</th>
+</tr>
+
+{% for patient in patients %}
+<tr>
+    <td>{{ patient.user.username }}</td>
+    <td>{{ patient.appointment_set.count }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<h2>Doctors</h2>
+<table class="table">
+<tr>
+    <th>Name</th>
+    <th>Specialization</th>
+    <th>Status</th>
+</tr>
+
+{% for doctor in doctors %}
+<tr>
+    <td>{{ doctor.user.username }}</td>
+    <td>{{ doctor.specialization }}</td>
+    <td>
+        {% if doctor.is_verified %}
+            Verified
+        {% else %}
+            Not Verified
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+</table>
