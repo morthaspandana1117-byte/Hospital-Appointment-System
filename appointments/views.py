@@ -9,6 +9,9 @@ from .models import Appointment, Doctor
 from django.contrib import messages
 from django.http import HttpResponse
 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+
 # ---------------- REGISTER ----------------
 def register_view(request):
     if request.method == "POST":
@@ -399,29 +402,40 @@ def confirm_token(request, id):
 def download_token(request, id):
     appointment = Appointment.objects.get(id=id)
 
-    # prevent unauthorized access
+    # सुरक्षा (important)
     if not appointment.is_token_confirmed:
         return HttpResponse("Token not confirmed yet")
 
-    response = HttpResponse(content_type='text/plain')
-    response['Content-Disposition'] = f'attachment; filename=token_{appointment.id}.txt'
+    # Create response
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename=token_{appointment.id}.pdf'
 
-    content = f"""
-    ------------------------------
-        HOSPITAL TOKEN
-    ------------------------------
+    # Create PDF
+    doc = SimpleDocTemplate(response)
+    styles = getSampleStyleSheet()
 
-    Patient Name : {appointment.patient.user.username}
-    Doctor Name  : {appointment.doctor.user.username}
-    Date         : {appointment.date}
-    Time         : {appointment.time}
+    elements = []
 
-    Token Number : {appointment.token_number}
+    # Title
+    elements.append(Paragraph("<b>HOSPITAL APPOINTMENT TOKEN</b>", styles['Title']))
+    elements.append(Spacer(1, 20))
 
-    Status       : CONFIRMED
+    # Details
+    elements.append(Paragraph(f"<b>Patient Name:</b> {appointment.patient.user.username}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Doctor Name:</b> {appointment.doctor.user.username}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Date:</b> {appointment.date}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Time:</b> {appointment.time}", styles['Normal']))
+    elements.append(Spacer(1, 20))
 
-    ------------------------------
-    """
+    elements.append(Paragraph(f"<b>Token Number:</b> {appointment.token_number}", styles['Heading2']))
+    elements.append(Spacer(1, 20))
 
-    response.write(content)
+    elements.append(Paragraph("<b>Status:</b> Confirmed", styles['Normal']))
+    elements.append(Spacer(1, 20))
+
+    elements.append(Paragraph("Please bring this token during your visit.", styles['Italic']))
+
+    # Build PDF
+    doc.build(elements)
+
     return response
