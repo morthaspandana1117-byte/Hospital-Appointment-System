@@ -48,7 +48,17 @@
         {% endfor %}
     </table>
 
-    <br>\n\n    <a href="{% url 'profile' %}">\n        <button>Update Profile</button>\n    </a>\n    <br>\n    <a href="{% url 'logout' %}">\n        <button>Logout</button>\n    </a>
+    <div style="margin-top: 20px;">
+
+        <a href="{% url 'profile' %}">
+            <button class="btn btn-primary">Update Profile</button>
+        </a>
+
+        <a href="{% url 'logout' %}">
+            <button class="btn btn-danger">Logout</button>
+        </a>
+
+    </div>
 
 </div>
 
