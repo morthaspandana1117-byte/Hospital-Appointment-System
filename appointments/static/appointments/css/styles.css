@@ -6,7 +6,7 @@
 }
 
 body {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
   color: white;
   min-height: 100vh;
   line-height: 1.6;
@@ -37,12 +37,12 @@ h2 {
 .login-box, .form-card {
   max-width: 500px;
   margin: 60px auto;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(20px);
   border-radius: 25px;
   padding: 40px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0,100,0,0.3);
+  border: 1px solid rgba(46, 204, 113, 0.4);
   text-align: center;
 }
 
@@ -113,13 +113,13 @@ label {
 }
 
 .btn-primary {
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  background: linear-gradient(45deg, #27ae60, #2ecc71);
   color: white;
 }
 
 .btn-primary:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 35px rgba(255, 107, 107, 0.5);
+  box-shadow: 0 12px 35px rgba(46, 204, 113, 0.6);
 }
 
 .btn-danger {
@@ -146,7 +146,7 @@ label {
 }
 
 .table th {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(46, 204, 113, 0.5);
   padding: 20px;
   color: white;
   font-weight: 600;
@@ -245,4 +245,11 @@ button {
 
 button:hover {
   background: #357abd;
+}
+
+button.btn-primary {
+    width: 100%;
+    text-align: left;
+    font-size: 16px;
+    margin-top: 10px;
 }
