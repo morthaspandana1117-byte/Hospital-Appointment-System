@@ -22,13 +22,6 @@
       <input type="email" name="email" value="{{ user.email }}" required>
 
       <p><strong>Current Role:</strong> {{ role }}</p>
-      <label for="role">Change Role (Warning: may lose appointments):</label>
-      <select name="role" id="role" required>
-        <option value="">-- Select --</option>
-        <option value="patient" {% if role == 'patient' %}selected{% endif %}>Patient</option>
-        <option value="doctor" {% if role == 'doctor' %}selected{% endif %}>Doctor</option>
-        <option value="admin" {% if role == 'admin' %}selected{% endif %}>Admin</option>
-      </select>
 
       {% if role == 'doctor' %}
         <label for="specialization">Specialization:</label>
@@ -48,9 +41,21 @@
 
   <br>
 
+  {% if user.patient %}
+    <a href="{% url 'patient-dashboard' %}">
+  {% elif user.doctor %}
+      <a href="{% url 'doctor-dashboard' %}">
+  {% else %}
+      <a href="{% url 'admin-dashboard' %}">
+  {% endif %}
+
+<button>Back</button>
+</a>
+
   <a href="{% url 'logout' %}">
     <button class="btn btn-danger">Logout</button>
   </a>
+
 </div>
 
 </body>

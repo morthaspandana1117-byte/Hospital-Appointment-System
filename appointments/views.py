@@ -331,3 +331,53 @@ def verify_doctor(request, id):
     doctor.save()
 
     return redirect('admin-dashboard')
+
+@login_required
+def manage_users(request):
+    patients = Patient.objects.all()
+    doctors = Doctor.objects.all()
+
+    patient_data = []
+    for p in patients:
+        count = Appointment.objects.filter(patient=p).count()
+        patient_data.append({
+            'patient': p,
+            'appointments': count
+        })
+
+    context = {
+        'patients': patient_data,
+        'doctors': doctors
+    }
+
+    return render(request, "appointments/manage-users.html", context)
+
+@login_required
+def delete_user(request, user_id):
+    user = User.objects.get(id=user_id)
+    user.delete()
+    return redirect('manage-users')
+
+def forgot_password(request):
+    if request.method == "POST":
+        username = request.POST['username']
+        password1 = request.POST['password1']
+        password2 = request.POST['password2']
+
+        if password1 != password2:
+            messages.error(request, "Passwords do not match")
+            return redirect('forgot-password')
+
+        try:
+            user = User.objects.get(username=username)
+            user.set_password(password1)
+            user.save()
+
+            messages.success(request, "Password reset successful. Please login.")
+            return redirect('login')
+
+        except User.DoesNotExist:
+            messages.error(request, "User not found")
+            return redirect('forgot-password')
+
+    return render(request, "appointments/forgot_password.html")

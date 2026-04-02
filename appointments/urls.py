@@ -15,6 +15,9 @@ urlpatterns = [
     path('assign-doctor/<int:id>/', views.assign_doctor, name='assign-doctor'),
     path('cancel/<int:id>/', views.cancel_appointment, name='cancel-appointment'),
     path('verify-doctor/<int:id>/', views.verify_doctor, name='verify-doctor'),
+    path('manage-users/', views.manage_users, name='manage-users'),
+    path('delete-user/<int:user_id>/', views.delete_user, name='delete-user'),
+    
 
     path('booking/', views.booking_view, name='booking'),
     path('cancel/<int:appointment_id>/', views.cancel_appointment, name='cancel-appointment'),
@@ -28,4 +31,6 @@ urlpatterns = [
     path('send-email/<int:appointment_id>/', views.send_status_email, name='send-email'),
 
     path('profile/', views.edit_profile, name='profile'),
+
+    path('forgot-password/', views.forgot_password, name='forgot-password'),
 ]
