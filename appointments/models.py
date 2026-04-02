@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+import uuid
 
 class Patient(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -29,14 +30,28 @@ class Appointment(models.Model):
         ('Accepted', 'Accepted'),
         ('Rejected', 'Rejected'),
         ('Cancelled', 'Cancelled'),
+        ('Confirmed', 'Confirmed'),   # ✅ NEW
     ]
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     problem = models.TextField()
+
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     time = models.TimeField(null=True, blank=True)
     date = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=20, default="Pending")
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
+
+    # ✅ TOKEN SYSTEM FIELDS
+    token_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    is_token_generated = models.BooleanField(default=False)
+    is_token_confirmed = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        # Generate token only once
+        if self.is_token_generated and not self.token_number:
+            self.token_number = "TKN-" + str(uuid.uuid4())[:8].upper()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.patient} - {self.doctor}"

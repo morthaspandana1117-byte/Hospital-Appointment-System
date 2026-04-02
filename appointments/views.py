@@ -7,6 +7,7 @@ from .models import Patient, Doctor, Appointment
 from django.conf import settings
 from .models import Appointment, Doctor
 from django.contrib import messages
+from django.http import HttpResponse
 
 # ---------------- REGISTER ----------------
 def register_view(request):
@@ -298,6 +299,9 @@ def assign_doctor(request, id):
         appointment.doctor = doctor
         appointment.time = time
         appointment.status = "Assigned"
+
+        appointment.is_token_generated = True
+
         appointment.save()
 
     return redirect('admin-dashboard')
@@ -381,3 +385,43 @@ def forgot_password(request):
             return redirect('forgot-password')
 
     return render(request, "appointments/forgot_password.html")
+
+@login_required
+def confirm_token(request, id):
+    appointment = Appointment.objects.get(id=id)
+    appointment.is_token_confirmed = True
+    appointment.status = "Confirmed"
+    appointment.save()
+
+    return redirect('admin-dashboard')
+
+@login_required
+def download_token(request, id):
+    appointment = Appointment.objects.get(id=id)
+
+    # prevent unauthorized access
+    if not appointment.is_token_confirmed:
+        return HttpResponse("Token not confirmed yet")
+
+    response = HttpResponse(content_type='text/plain')
+    response['Content-Disposition'] = f'attachment; filename=token_{appointment.id}.txt'
+
+    content = f"""
+    ------------------------------
+        HOSPITAL TOKEN
+    ------------------------------
+
+    Patient Name : {appointment.patient.user.username}
+    Doctor Name  : {appointment.doctor.user.username}
+    Date         : {appointment.date}
+    Time         : {appointment.time}
+
+    Token Number : {appointment.token_number}
+
+    Status       : CONFIRMED
+
+    ------------------------------
+    """
+
+    response.write(content)
+    return response

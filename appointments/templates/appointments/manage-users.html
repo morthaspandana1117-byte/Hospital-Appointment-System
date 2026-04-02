@@ -14,6 +14,11 @@
                 section.style.display = "none";
             }
         }
+
+        function confirmDelete() {
+            return confirm("⚠️ Are you sure you want to delete this user?");
+        }
+
     </script>
 </head>
 <body>
@@ -39,7 +44,8 @@
                 <td>{{ item.patient.user.username }}</td>
                 <td>{{ item.appointments }}</td>
                 <td>
-                    <form method="POST" action="{% url 'delete-user' item.patient.user.id %}">
+                    <form method="POST" action="{% url 'delete-user' item.patient.user.id %}" 
+                        onsubmit="return confirmDelete()">
                         {% csrf_token %}
                         <button class="btn btn-danger">Delete</button>
                     </form>
@@ -83,7 +89,8 @@
                 </td>
 
                 <td>
-                    <form method="POST" action="{% url 'delete-user' doctor.user.id %}">
+                    <form method="POST" action="{% url 'delete-user' doctor.user.id %}" 
+                        onsubmit="return confirmDelete()">
                         {% csrf_token %}
                         <button class="btn btn-danger">Delete</button>
                     </form>

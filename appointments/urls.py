@@ -33,4 +33,7 @@ urlpatterns = [
     path('profile/', views.edit_profile, name='profile'),
 
     path('forgot-password/', views.forgot_password, name='forgot-password'),
+
+    path('confirm-token/<int:id>/', views.confirm_token, name='confirm-token'),
+    path('download-token/<int:id>/', views.download_token, name='download-token'),
 ]

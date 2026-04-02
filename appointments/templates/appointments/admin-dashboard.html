@@ -31,6 +31,8 @@
             <th>Status</th>
             <th>Action</th>
             <th>Cancel</th>
+            <th>Token</th>
+            <th>Confirm</th>
         </tr>
 
         {% for appointment in appointments %}
@@ -85,6 +87,26 @@
                     <button class="btn btn-danger">Cancel</button>
                 </a>
             </td>
+
+            <td>
+                {% if appointment.is_token_generated %}
+                    {{ appointment.token_number }}
+                {% else %}
+                    Not Generated
+                {% endif %}
+            </td>
+
+            <td>
+                {% if appointment.is_token_generated and not appointment.is_token_confirmed %}
+                    <a href="{% url 'confirm-token' appointment.id %}">
+                        <button class="btn btn-success">Confirm</button>
+                    </a>
+                {% elif appointment.is_token_confirmed %}
+                    Confirmed
+                {% else %}
+                    -
+                {% endif %}
+            </td>
         </tr>
         {% empty %}
         <tr>
@@ -105,6 +127,7 @@
             <th>Certificate</th>
             <th>Status</th>
             <th>Action</th>
+            
         </tr>
 
         {% for doctor in doctors %}
@@ -139,6 +162,7 @@
                     ✔
                 {% endif %}
             </td>
+
         </tr>
         {% endfor %}
     </table>
