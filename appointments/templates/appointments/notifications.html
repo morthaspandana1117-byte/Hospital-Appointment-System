@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notifications</title>
+</head>
+<body>
+
+<h2>Notifications 🔔</h2>
+
+{% for note in notes %}
+    <p>{{ note.message }}</p>
+{% empty %}
+    <p>No notifications</p>
+{% endfor %}
+
+<br>
+
+<a href="javascript:history.back()">
+    <button>Back</button>
+</a>
+
+</body>
+</html>

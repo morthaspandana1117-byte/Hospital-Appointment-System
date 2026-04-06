@@ -28,8 +28,7 @@ urlpatterns = [
     path('accept/<int:id>/', views.accept, name='accept'),
     path('reject/<int:id>/', views.reject, name='reject'),
 
-    path('send-email/<int:appointment_id>/', views.send_status_email, name='send-email'),
-
+    path('notifications/', views.notifications, name='notifications'),
     path('profile/', views.edit_profile, name='profile'),
 
     path('forgot-password/', views.forgot_password, name='forgot-password'),

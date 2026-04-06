@@ -12,6 +12,11 @@ from django.http import HttpResponse
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
+from .models import Notification
+
+def create_notification(user, message):
+    Notification.objects.create(user=user, message=message)
+
 # ---------------- REGISTER ----------------
 def register_view(request):
     if request.method == "POST":
@@ -102,22 +107,32 @@ def logout_view(request):
 def booking_view(request):
 
     if request.method == "POST":
+        name = request.POST.get('name')
+        age = request.POST.get('age')
         problem = request.POST.get('problem')
         date = request.POST.get('date')
-
+        
         patient = request.user.patient
 
-        Appointment.objects.create(
+        # ✅ create + save happens here
+        appointment = Appointment.objects.create(
             patient=patient,
             problem=problem,
             date=date,
             status="Pending"
         )
 
+        # ✅ Notify Admin after booking
+        admins = User.objects.filter(is_superuser=True)
+        for admin in admins:
+            create_notification(
+                admin,
+                f"New appointment booked by {request.user.username}"
+            )
+
         return redirect('patient-dashboard')
 
     return render(request, "appointments/booking.html")
-
 
 # ---------------- PATIENT DASHBOARD ----------------
 @login_required
@@ -174,14 +189,39 @@ def accept(request, id):
     appointment.status = "Accepted"
     appointment.save()
 
+    admins = User.objects.filter(is_superuser=True)
+
+    for admin in admins:
+        create_notification(
+            admin,
+            f"Dr.{request.user.username} accepted an appointment"
+        )
+
     return redirect('doctor-dashboard')
 
 
 # ---------------- REJECT ----------------
+@login_required
 def reject(request, id):
     appointment = Appointment.objects.get(id=id)
-    appointment.status = "Rejected"
+
+    appointment.status = "Cancelled"
     appointment.save()
+
+    # Notify Patient
+    create_notification(
+        appointment.patient.user,
+        "Your appointment has been CANCELLED by doctor"
+    )
+
+    # (Optional) Notify Admins
+    admins = User.objects.filter(is_superuser=True)
+
+    for admin in admins:
+        create_notification(
+            admin,
+            f"Appointment {appointment.id} was cancelled by doctor"
+        )
 
     return redirect('doctor-dashboard')
 
@@ -192,52 +232,16 @@ def cancel_appointment(request, appointment_id):
     appointment = get_object_or_404(Appointment, id=appointment_id, patient=request.user.patient)
     appointment.status = "Cancelled"
     appointment.save()
+
+    admins = User.objects.filter(is_superuser=True)
+
+    for admin in admins:
+        create_notification(
+            admin,
+            f"{request.user.username} cancelled an appointment"
+        )
+
     return redirect('patient-dashboard')
-
-
-# ---------------- EMAIL ----------------
-
-def send_status_email(request, appointment_id):
-    print("Sending email...")
-    appointment = get_object_or_404(Appointment, id=appointment_id)
-
-    patient_name = appointment.patient.user.username
-    patient_email = appointment.patient.user.email
-
-    doctor_name = appointment.doctor.user.username
-
-    status = appointment.status
-    date = appointment.time
-    time = appointment.time
-
-    subject = "Appointment Status Update"
-
-    message = f"""
-Hello {patient_name},
-
-Your appointment with Dr. {doctor_name} has been updated.
-
-Appointment Details:
-Date: {date}
-Time: {time}
-Status: {status}
-
-If you have any questions, please contact the hospital.
-
-Thank you,
-Hospital Appointment System
-"""
-
-    # Send email
-    send_mail(
-        subject,
-        message,
-        settings.EMAIL_HOST_USER,
-        [patient_email],
-        fail_silently=False,
-    )
-
-    return redirect('admin-dashboard')
 
 
 # ---------------- PROFILE ----------------
@@ -307,12 +311,21 @@ def assign_doctor(request, id):
 
         appointment.save()
 
+        create_notification(
+            doctor.user,
+            f"You have been assigned a new appointment from {appointment.patient.user.username}"
+        )
+
     return redirect('admin-dashboard')
 
 def cancel_appointment(request, id):
     appointment = Appointment.objects.get(id=id)
     appointment.status = "Cancelled"
     appointment.save()
+    create_notification(
+    appointment.patient.user,
+    f"Your appointment has been CANCELLED by admin"
+)
 
     return redirect('admin-dashboard')
 
@@ -395,6 +408,10 @@ def confirm_token(request, id):
     appointment.is_token_confirmed = True
     appointment.status = "Confirmed"
     appointment.save()
+    create_notification(
+        appointment.patient.user,
+        f"Your appointment has been CONFIRMED by admin"
+    )
 
     return redirect('admin-dashboard')
 
@@ -439,3 +456,7 @@ def download_token(request, id):
     doc.build(elements)
 
     return response
+
+def notifications(request):
+    notes = Notification.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'appointments/notifications.html', {'notes': notes})
