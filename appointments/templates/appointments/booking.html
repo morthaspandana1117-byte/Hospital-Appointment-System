@@ -3,7 +3,8 @@
 <html>
 <head>
     <title>Book Appointment</title>
-    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
@@ -11,15 +12,19 @@
     <div class="form-card">
         <h2>Book Appointment</h2>
 
+        {% if error %}
+            <p style="color:#ffe0e0; margin-bottom: 16px;">{{ error }}</p>
+        {% endif %}
+
         <form method="POST">
             {% csrf_token %}
 
-            <input type="text" name="name" placeholder="Patient Name" required>
-            <input type="number" name="age" placeholder="Age" required>
+            <input type="text" name="name" placeholder="Patient Name" value="{{ form_data.name|default:'' }}" required>
+            <input type="number" name="age" placeholder="Age" value="{{ form_data.age|default:'' }}" required>
 
-            <textarea name="problem" placeholder="Describe your problem" required></textarea>
+            <textarea name="problem" placeholder="Describe your problem" required>{{ form_data.problem|default:'' }}</textarea>
 
-            <input type="date" name="date" required>
+            <input type="date" name="date" min="{{ today }}" value="{{ form_data.date|default:today }}" required>
 
             <button class="btn btn-primary" type="submit">
                 Book Appointment

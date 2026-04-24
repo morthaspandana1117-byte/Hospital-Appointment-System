@@ -46,6 +46,18 @@ h2 {
   text-align: center;
 }
 
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.dashboard-actions a {
+  text-decoration: none;
+}
+
 .login-box h2 {
   color: white;
   text-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -163,6 +175,10 @@ label {
   transition: all 0.3s ease;
 }
 
+.table tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 .table tr:hover td {
   background: rgba(255, 255, 255, 0.25);
   transform: scale(1.01);
@@ -193,6 +209,45 @@ label {
   color: #fed7d7;
 }
 
+.status-read {
+  background: rgba(72, 187, 120, 0.2);
+  color: #c6f6d5;
+}
+
+.status-unread {
+  background: rgba(237, 137, 54, 0.22);
+  color: #feebc8;
+}
+
+.notifications-card {
+  max-width: 1000px;
+  text-align: left;
+}
+
+.notifications-card h2 {
+  text-align: center;
+}
+
+.notifications-table td:first-child {
+  width: 50%;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.notifications-actions {
+  margin-top: 32px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .container {
@@ -205,6 +260,11 @@ label {
   
   .table th, .table td {
     padding: 12px;
+  }
+
+  .notifications-card {
+    padding: 24px 18px;
+    margin: 30px auto;
   }
   
   .btn {

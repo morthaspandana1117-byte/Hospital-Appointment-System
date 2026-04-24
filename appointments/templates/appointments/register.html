@@ -11,27 +11,27 @@
 <div class="login-box">
     <h2>Create Account</h2>
 
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
-        
+
         <input type="text" name="username" placeholder="Username" required>
-        
         <input type="email" name="email" placeholder="Email" required>
-        
         <input type="text" name="phone" placeholder="Phone Number" required>
-        
         <input type="password" name="password" placeholder="Password" required>
 
         <select name="role" id="roleSelect" required>
             <option value="">Select Role</option>
             <option value="patient">Patient</option>
             <option value="doctor">Doctor</option>
+            <option value="mediator">Mediator</option>
         </select>
 
-        <!-- Doctor Fields -->
         <div id="doctorFields" style="display:none;">
             <input type="text" name="specialization" placeholder="Specialization">
-            
             <input type="file" name="certificate" accept=".pdf">
         </div>
 
@@ -43,7 +43,6 @@
     </p>
 </div>
 
-<!-- JS to show doctor fields -->
 <script>
     const roleSelect = document.getElementById("roleSelect");
     const doctorFields = document.getElementById("doctorFields");

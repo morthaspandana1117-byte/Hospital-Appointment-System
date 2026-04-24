@@ -3,23 +3,27 @@
 <html>
 <head>
     <title>Doctor Dashboard</title>
-    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
 <div class="container">
     <h2>Doctor Dashboard</h2>
 
-    <div style="margin-top: 20px;"></div>
+    <div class="dashboard-actions">
         <a href="{% url 'notifications' %}">
-            <button>Notifications 🔔</button>
+            <button class="btn btn-primary">Notifications</button>
         </a>
     </div>
+
+    <h3>Appointment History</h3>
 
     <table class="table" border="1">
         <tr>
             <th>Patient</th>
             <th>Problem</th>
+            <th>Date</th>
             <th>Time</th>
             <th>Status</th>
         </tr>
@@ -28,34 +32,24 @@
         <tr>
             <td>{{ appointment.patient.user.username }}</td>
             <td>{{ appointment.problem }}</td>
-            <td>{{ appointment.time|time:"h:i A" }}</td>
-
-            <td class="status-{{ appointment.status|lower }}">
-                {{ appointment.status }}
-
-                {% if appointment.status == "Assigned" %}
-                    <br><br>
-                    <a href="{% url 'accept' appointment.id %}">
-                        <button class="btn btn-primary">Accept</button>
-                    </a>
-
-                    <a href="{% url 'reject' appointment.id %}">
-                        <button class="btn btn-danger">Reject</button>
-                    </a>
+            <td>{{ appointment.date|default:"-" }}</td>
+            <td>
+                {% if appointment.time %}
+                    {{ appointment.time|time:"h:i A" }}
+                {% else %}
+                    -
                 {% endif %}
             </td>
+            <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="4" style="text-align:center;">
-                No appointments available.
-            </td>
+            <td colspan="5" style="text-align:center;">No appointments available.</td>
         </tr>
         {% endfor %}
     </table>
 
-    <div style="margin-top: 20px;">
-
+    <div class="dashboard-actions">
         <a href="{% url 'profile' %}">
             <button class="btn btn-primary">Update Profile</button>
         </a>
@@ -63,9 +57,7 @@
         <a href="{% url 'logout' %}">
             <button class="btn btn-danger">Logout</button>
         </a>
-
     </div>
-
 </div>
 
 </body>

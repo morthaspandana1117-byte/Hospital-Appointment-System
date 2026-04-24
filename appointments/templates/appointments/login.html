@@ -3,7 +3,8 @@
 <html>
 <head>
     <title>Login</title>
-    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
@@ -12,6 +13,10 @@
 
     {% if error %}
         <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+    {% if message %}
+        <p style="color:green;">{{ message }}</p>
     {% endif %}
 
     {% if messages %}
@@ -28,7 +33,7 @@
     </form>
 
     <a href="{% url 'forgot-password' %}">Forgot Password?</a>
-    
+
     <p class="footer-note">
         Don't have an account?
         <a href="{% url 'register' %}">Register</a>

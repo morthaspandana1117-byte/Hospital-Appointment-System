@@ -11,30 +11,27 @@
 <div class="container">
     <h2>Admin Dashboard</h2>
 
-    <br>
-
-    <div style="margin-top: 20px;"></div>
+    <div class="dashboard-actions">
         <a href="{% url 'notifications' %}">
-            <button>Notifications 🔔</button>
+            <button class="btn btn-primary">Notifications</button>
+        </a>
+        <a href="{% url 'manage-users' %}">
+            <button class="btn btn-primary">Manage Users</button>
         </a>
     </div>
-    <a href="{% url 'manage-users' %}">
-        <button class="btn btn-primary">Manage Users</button>
-    </a>
 
-<br><br>
+    <br><br>
 
-    <!-- ================= APPOINTMENTS ================= -->
     <h3>Appointment Requests</h3>
 
     <table class="table" border="1">
         <tr>
             <th>Patient</th>
             <th>Doctor</th>
+            <th>Assignment</th>
             <th>Problem</th>
             <th>Time</th>
             <th>Status</th>
-            <th>Action</th>
             <th>Cancel</th>
             <th>Token</th>
             <th>Confirm</th>
@@ -50,6 +47,13 @@
                     Not Assigned
                 {% endif %}
             </td>
+            <td>
+                {% if appointment.doctor %}
+                    <span class="status status-confirmed">Doctor Assigned</span>
+                {% else %}
+                    <span class="status status-pending">Not Assigned</span>
+                {% endif %}
+            </td>
             <td>{{ appointment.problem }}</td>
             <td>
                 {% if appointment.time %}
@@ -58,37 +62,10 @@
                     -
                 {% endif %}
             </td>
-            <td class="status-{{ appointment.status|lower }}">
-                {{ appointment.status }}
-            </td>
+            <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
 
             <td>
-                {% if appointment.status == "Pending" %}
-                    <form method="POST" action="{% url 'assign-doctor' appointment.id %}">
-                        {% csrf_token %}
-
-                        <select name="doctor" required>
-                            <option value="">Select Doctor</option>
-                            {% for doctor in doctors %}
-                            <option value="{{ doctor.id }}">
-                                Dr. {{ doctor.user.username }}
-                            </option>
-                            {% endfor %}
-                        </select>
-
-                        <input type="time" name="time" required>
-
-                        <button class="btn btn-primary" type="submit">
-                            Assign
-                        </button>
-                    </form>
-                {% else %}
-                    Assigned
-                {% endif %}
-            </td>
-
-            <td>
-                <a href="{% url 'cancel-appointment' appointment.id %}">
+                <a href="{% url 'admin-cancel-appointment' appointment.id %}">
                     <button class="btn btn-danger">Cancel</button>
                 </a>
             </td>
@@ -115,14 +92,11 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="7" style="text-align:center;">
-                No appointments available.
-            </td>
+            <td colspan="8" style="text-align:center;">No appointments available.</td>
         </tr>
         {% endfor %}
     </table>
 
-    <!-- ================= DOCTOR VERIFICATION ================= -->
     <h3>Doctor Verification</h3>
 
     <table class="table" border="1">
@@ -132,24 +106,19 @@
             <th>Certificate</th>
             <th>Status</th>
             <th>Action</th>
-            
         </tr>
 
         {% for doctor in doctors %}
         <tr>
             <td>{{ doctor.user.username }}</td>
             <td>{{ doctor.specialization }}</td>
-
             <td>
                 {% if doctor.certificate %}
-                    <a href="{{ doctor.certificate.url }}" target="_blank">
-                        View Certificate
-                    </a>
+                    <a href="{{ doctor.certificate.url }}" target="_blank">View Certificate</a>
                 {% else %}
                     No file
                 {% endif %}
             </td>
-
             <td>
                 {% if doctor.is_verified %}
                     <span style="color:green;">Verified</span>
@@ -157,24 +126,21 @@
                     <span style="color:red;">Not Verified</span>
                 {% endif %}
             </td>
-
             <td>
                 {% if not doctor.is_verified %}
                     <a href="{% url 'verify-doctor' doctor.id %}">
                         <button class="btn btn-primary">Verify</button>
                     </a>
                 {% else %}
-                    ✔
+                    Verified
                 {% endif %}
             </td>
-
         </tr>
         {% endfor %}
     </table>
 
     <br><br>
 
-    <!-- ================= ACTION BUTTONS ================= -->
     <a href="{% url 'profile' %}">
         <button class="btn btn-primary">Update Profile</button>
     </a>
@@ -184,7 +150,6 @@
     <a href="{% url 'logout' %}">
         <button class="btn btn-danger">Logout</button>
     </a>
-
 </div>
 
 </body>

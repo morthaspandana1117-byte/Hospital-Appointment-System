@@ -3,7 +3,7 @@
 <html>
 <head>
   <title>Update Profile</title>
-  <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n  <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+  <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
   <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
@@ -21,11 +21,22 @@
       <label for="email">Email:</label>
       <input type="email" name="email" value="{{ user.email }}" required>
 
+      {% if role == 'patient' %}
+        <label for="phone">Phone:</label>
+        <input type="text" name="phone" value="{{ user.patient.phone }}">
+      {% endif %}
+
+      {% if role == 'mediator' %}
+        <label for="phone">Phone:</label>
+        <input type="text" name="phone" value="{{ user.mediator.phone }}">
+      {% endif %}
+
       <p><strong>Current Role:</strong> {{ role }}</p>
 
       {% if role == 'doctor' %}
         <label for="specialization">Specialization:</label>
         <input type="text" name="specialization" value="{{ user.doctor.specialization }}" placeholder="e.g. Cardiology">
+
         <label for="working_hours">Working Hours:</label>
         <input type="text" name="working_hours" value="{{ user.doctor.working_hours }}" placeholder="e.g. 9AM-5PM">
       {% endif %}
@@ -33,31 +44,28 @@
       <label for="password">New Password (optional):</label>
       <input type="password" name="password" placeholder="Leave blank to keep current">
 
-      <button class="btn btn-primary" type="submit">
-        Update Profile
-      </button>
+      <button class="btn btn-primary" type="submit">Update Profile</button>
     </form>
   </div>
 
   <br>
 
-  {% if user.patient %}
+  {% if role == 'patient' %}
     <a href="{% url 'patient-dashboard' %}">
-  {% elif user.doctor %}
-      <a href="{% url 'doctor-dashboard' %}">
+  {% elif role == 'doctor' %}
+    <a href="{% url 'doctor-dashboard' %}">
+  {% elif role == 'mediator' %}
+    <a href="{% url 'mediator-dashboard' %}">
   {% else %}
-      <a href="{% url 'admin-dashboard' %}">
+    <a href="{% url 'admin-dashboard' %}">
   {% endif %}
-
-<button>Back</button>
-</a>
+      <button>Back</button>
+    </a>
 
   <a href="{% url 'logout' %}">
     <button class="btn btn-danger">Logout</button>
   </a>
-
 </div>
 
 </body>
 </html>
-

@@ -3,23 +3,24 @@
 <html>
 <head>
     <title>Patient Dashboard</title>
-    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">\n    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
 <div class="container">
     <h2>My Appointments</h2>
 
-    <div style="margin-top: 20px;"></div>
+    <div class="dashboard-actions">
         <a href="{% url 'notifications' %}">
-            <button>Notifications 🔔</button>
+            <button class="btn btn-primary">Notifications</button>
         </a>
     </div>
 
-    <div style="margin-top: 20px;">
+    <div class="dashboard-actions">
         <a href="{% url 'booking' %}">
-        <button class="btn btn-primary">Book New Appointment</button>
-    </a>
+            <button class="btn btn-primary">Book New Appointment</button>
+        </a>
     </div>
 
     <br><br>
@@ -37,11 +38,22 @@
 
         {% for appointment in appointments %}
         <tr>
-            <td>{{ appointment.doctor.user.username }}</td>
+            <td>
+                {% if appointment.doctor %}
+                    {{ appointment.doctor.user.username }}
+                {% else %}
+                    Not assigned
+                {% endif %}
+            </td>
             <td>{{ appointment.problem }}</td>
-            <td>{{ appointment.time|time:"h:i A" }}</td>
-            <td>{{ appointment.status }}</td>
-
+            <td>
+                {% if appointment.time %}
+                    {{ appointment.time|time:"h:i A" }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
             <td>
                 {% if appointment.status == "Pending" %}
                     <a href="{% url 'cancel-appointment' appointment.id %}">
@@ -51,10 +63,6 @@
                     -
                 {% endif %}
             </td>
-            <td class="status-{{ appointment.status|lower }}">
-                {{ appointment.status }}
-            </td>
-
             <td>
                 {% if appointment.is_token_confirmed %}
                     {{ appointment.token_number }}
@@ -62,7 +70,6 @@
                     Not Available
                 {% endif %}
             </td>
-
             <td>
                 {% if appointment.is_token_confirmed %}
                     <a href="{% url 'download-token' appointment.id %}">
@@ -75,15 +82,12 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5" style="text-align:center;">
-                No appointments found.
-            </td>
+            <td colspan="7" style="text-align:center;">No appointments found.</td>
         </tr>
         {% endfor %}
     </table>
 
-    <div style="margin-top: 20px;">
-
+    <div class="dashboard-actions">
         <a href="{% url 'profile' %}">
             <button class="btn btn-primary">Update Profile</button>
         </a>
@@ -91,9 +95,7 @@
         <a href="{% url 'logout' %}">
             <button class="btn btn-danger">Logout</button>
         </a>
-
     </div>
-
 </div>
 
 </body>

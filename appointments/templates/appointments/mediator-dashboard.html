@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mediator Dashboard</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h2>Mediator Dashboard</h2>
+
+    <div class="dashboard-actions">
+        <a href="{% url 'notifications' %}">
+            <button class="btn btn-primary">Notifications</button>
+        </a>
+
+        <a href="{% url 'profile' %}">
+            <button class="btn btn-primary">Update Profile</button>
+        </a>
+
+        <a href="{% url 'logout' %}">
+            <button class="btn btn-danger">Logout</button>
+        </a>
+    </div>
+
+    <h3>All Appointment Requests</h3>
+
+    <table class="table" border="1">
+        <tr>
+            <th>Patient</th>
+            <th>Doctor</th>
+            <th>Assignment</th>
+            <th>Problem</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Decision</th>
+        </tr>
+
+        {% for appointment in appointments %}
+        <tr>
+            <td>{{ appointment.patient.user.username }}</td>
+            <td>
+                {% if appointment.doctor %}
+                    Dr. {{ appointment.doctor.user.username }}
+                {% else %}
+                    Not assigned
+                {% endif %}
+            </td>
+            <td>
+                {% if appointment.doctor %}
+                    <span class="status status-confirmed">Doctor Assigned</span>
+                {% else %}
+                    <span class="status status-pending">Not Assigned</span>
+                    <form method="post" action="{% url 'assign-doctor' appointment.id %}" style="margin-top: 10px;">
+                        {% csrf_token %}
+                        <select name="doctor" required>
+                            <option value="">Select Doctor</option>
+                            {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}">Dr. {{ doctor.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="time" name="time" required>
+                        <button type="submit" class="btn btn-primary">Assign Doctor</button>
+                    </form>
+                {% endif %}
+            </td>
+            <td>{{ appointment.problem }}</td>
+            <td>{{ appointment.date|default:"-" }}</td>
+            <td>
+                {% if appointment.time %}
+                    {{ appointment.time|time:"h:i A" }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
+            <td>
+                {% if appointment.status == "Pending" %}
+                    <form method="post" action="{% url 'accept' appointment.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Accept</button>
+                    </form>
+                    <form method="post" action="{% url 'reject' appointment.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </form>
+                {% else %}
+                    No action needed
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" style="text-align:center;">No appointment requests found.</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+</body>
+</html>

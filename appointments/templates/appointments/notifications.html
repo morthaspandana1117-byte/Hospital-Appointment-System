@@ -1,23 +1,55 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
     <title>Notifications</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
-<h2>Notifications 🔔</h2>
+<div class="container">
+    <div class="form-card notifications-card">
+        <h2>Notifications</h2>
 
-{% for note in notes %}
-    <p>{{ note.message }}</p>
-{% empty %}
-    <p>No notifications</p>
-{% endfor %}
+        {% if notes %}
+        <div class="table-wrapper">
+            <table class="table notifications-table">
+                <thead>
+                    <tr>
+                        <th>Message</th>
+                        <th>Date/Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for note in notes %}
+                    <tr>
+                        <td>{{ note.message }}</td>
+                        <td>{{ note.created_at|date:"M d, Y" }} {{ note.created_at|time:"h:i A" }}</td>
+                        <td>
+                            <span class="status {% if note.is_read %}status-read{% else %}status-unread{% endif %}">
+                                {% if note.is_read %}Read{% else %}Unread{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No notifications available</p>
+        </div>
+        {% endif %}
 
-<br>
-
-<a href="javascript:history.back()">
-    <button>Back</button>
-</a>
+        <div class="dashboard-actions notifications-actions">
+            <a href="{% url dashboard_url %}">
+                <button class="btn btn-primary" type="button">Back to Dashboard</button>
+            </a>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
