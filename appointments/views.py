@@ -1,4 +1,5 @@
 from datetime import date
+import mimetypes
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -6,15 +7,17 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.http import FileResponse, HttpResponse, HttpResponseForbidden
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from .forms import MedicalReportForm
-from .models import Appointment, Doctor, MedicalReport, Mediator, Notification, Patient
+from .models import Appointment, Doctor, MedicalReport, Mediator, Message, Notification, Patient
 
 
 def create_notification(user, message):
@@ -55,6 +58,61 @@ def admin_only(request):
     if not request.user.is_superuser:
         return HttpResponseForbidden("Only admins can perform this action.")
     return None
+
+
+def user_can_access_report(user, report):
+    is_report_owner = is_patient(user) and report.patient_id == user.patient.id
+    is_assigned_doctor = (
+        is_doctor(user)
+        and report.doctor_id is not None
+        and report.doctor_id == user.doctor.id
+    )
+    return is_report_owner or is_assigned_doctor
+
+
+def get_chat_appointment_for_user(user, appointment_id):
+    appointment = get_object_or_404(
+        Appointment.objects.select_related("patient__user", "doctor__user"),
+        id=appointment_id,
+    )
+
+    if appointment.status not in ["Accepted", "Confirmed"]:
+        return None, HttpResponseForbidden("Chat is only available for accepted or confirmed appointments.")
+
+    is_chat_patient = is_patient(user) and appointment.patient_id == user.patient.id
+    is_chat_doctor = (
+        is_doctor(user)
+        and appointment.doctor_id is not None
+        and appointment.doctor_id == user.doctor.id
+    )
+
+    if not (is_chat_patient or is_chat_doctor):
+        return None, HttpResponseForbidden("You are not authorized to access this chat.")
+
+    if appointment.doctor_id is None:
+        return None, HttpResponseForbidden("Chat is not available until a doctor is assigned.")
+
+    return appointment, None
+
+
+def apply_report_filters(queryset, request):
+    search_query = request.GET.get("q", "").strip()
+    report_type = request.GET.get("report_type", "").strip()
+
+    if search_query:
+        queryset = queryset.filter(
+            Q(original_file_name__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(report_type__icontains=search_query)
+            | Q(appointment__problem__icontains=search_query)
+            | Q(patient__user__username__icontains=search_query)
+            | Q(doctor__user__username__icontains=search_query)
+        )
+
+    if report_type:
+        queryset = queryset.filter(report_type=report_type)
+
+    return queryset, search_query, report_type
 
 
 # ---------------- REGISTER ----------------
@@ -146,7 +204,11 @@ def booking_view(request):
     if request.method == "POST":
         problem = request.POST.get("problem")
         appointment_date = parse_date(request.POST.get("date"))
+        priority = request.POST.get("priority", "Normal")
         patient = request.user.patient
+
+        if priority not in dict(Appointment.PRIORITY_CHOICES):
+            priority = "Normal"
 
         if not appointment_date:
             return render(request, "appointments/booking.html", {
@@ -166,6 +228,7 @@ def booking_view(request):
             patient=patient,
             problem=problem,
             date=appointment_date,
+            priority=priority,
             status="Pending",
         )
 
@@ -205,7 +268,14 @@ def patient_dashboard(request):
     appointments = Appointment.objects.filter(patient=request.user.patient).select_related(
         "doctor__user", "patient__user"
     ).prefetch_related("medical_reports")
-    return render(request, "appointments/patient-dashboard.html", {"appointments": appointments})
+    analytics = {
+        "total_appointments": appointments.count(),
+        "total_reports": MedicalReport.objects.filter(patient=request.user.patient).count(),
+    }
+    return render(request, "appointments/patient-dashboard.html", {
+        "appointments": appointments,
+        "analytics": analytics,
+    })
 
 
 # ---------------- DOCTOR DASHBOARD ----------------
@@ -217,9 +287,15 @@ def doctor_dashboard(request):
     appointments = Appointment.objects.filter(doctor=request.user.doctor).select_related(
         "patient__user", "doctor__user"
     ).prefetch_related("medical_reports").order_by("-date", "-time")
+    analytics = {
+        "total_appointments": appointments.count(),
+        "total_patients": appointments.exclude(patient=None).values("patient").distinct().count(),
+        "total_reports": MedicalReport.objects.filter(doctor=request.user.doctor).count(),
+    }
 
     return render(request, "appointments/doctor-dashboard.html", {
-        "appointments": appointments
+        "appointments": appointments,
+        "analytics": analytics,
     })
 
 
@@ -232,12 +308,25 @@ def mediator_dashboard(request):
 
     appointments = Appointment.objects.select_related(
         "patient__user", "doctor__user"
-    ).order_by("status", "date", "time")
+    ).annotate(
+        priority_rank=Case(
+            When(priority="Emergency", then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    ).order_by("priority_rank", "date", "time")
     doctors = Doctor.objects.filter(is_verified=True).select_related("user")
+    analytics = {
+        "total_pending": appointments.filter(status="Pending").count(),
+        "total_assigned": appointments.exclude(doctor=None).count(),
+        "total_accepted": appointments.filter(status="Accepted").count(),
+        "total_rejected": appointments.filter(status="Rejected").count(),
+    }
 
     return render(request, "appointments/mediator-dashboard.html", {
         "appointments": appointments,
         "doctors": doctors,
+        "analytics": analytics,
     })
 
 
@@ -267,10 +356,25 @@ def admin_dashboard(request):
 
     appointments = Appointment.objects.all().select_related("patient__user", "doctor__user")
     doctors = Doctor.objects.all().select_related("user")
+    appointment_status_counts = {
+        item["status"]: item["count"]
+        for item in Appointment.objects.values("status").annotate(count=Count("id"))
+    }
+    analytics = {
+        "total_patients": Patient.objects.count(),
+        "total_doctors": Doctor.objects.count(),
+        "total_appointments": appointments.count(),
+        "pending_count": appointment_status_counts.get("Pending", 0),
+        "accepted_count": appointment_status_counts.get("Accepted", 0),
+        "rejected_count": appointment_status_counts.get("Rejected", 0),
+        "confirmed_count": appointment_status_counts.get("Confirmed", 0),
+        "cancelled_count": appointment_status_counts.get("Cancelled", 0),
+    }
 
     return render(request, "appointments/admin-dashboard.html", {
         "appointments": appointments,
         "doctors": doctors,
+        "analytics": analytics,
     })
 
 
@@ -411,6 +515,15 @@ def assign_doctor(request, id):
     appointment.doctor = doctor
     appointment.time = request.POST.get("time")
     appointment.is_token_generated = True
+    try:
+        appointment.full_clean()
+    except ValidationError as exc:
+        error_message = exc.message_dict.get("time", exc.messages)
+        if isinstance(error_message, list):
+            error_message = error_message[0]
+        messages.error(request, error_message)
+        return redirect("mediator-dashboard")
+
     appointment.save()
 
     create_notification(
@@ -578,6 +691,10 @@ def upload_medical_report(request, appointment_id):
         patient=request.user.patient,
     )
 
+    if appointment.doctor_id is None:
+        messages.error(request, "You can upload reports only after doctor assignment.")
+        return redirect("patient-dashboard")
+
     if request.method == "POST":
         form = MedicalReportForm(request.POST, request.FILES)
         if form.is_valid():
@@ -585,16 +702,20 @@ def upload_medical_report(request, appointment_id):
             report.patient = request.user.patient
             report.doctor = appointment.doctor
             report.appointment = appointment
-            report.save()
+            try:
+                report.full_clean()
+            except ValidationError as exc:
+                form.add_error(None, exc)
+            else:
+                report.save()
 
-            if appointment.doctor:
                 create_notification(
                     appointment.doctor.user,
                     f"{request.user.username} uploaded a medical report for appointment #{appointment.id}."
                 )
 
-            messages.success(request, "Medical report uploaded successfully.")
-            return redirect("patient-reports")
+                messages.success(request, "Medical report uploaded successfully.")
+                return redirect("patient-reports")
     else:
         form = MedicalReportForm()
 
@@ -614,6 +735,7 @@ def patient_reports(request):
         "doctor__user",
         "patient__user",
     )
+    reports, search_query, report_type = apply_report_filters(reports, request)
     appointments = Appointment.objects.filter(patient=request.user.patient).select_related(
         "doctor__user"
     ).prefetch_related("medical_reports")
@@ -621,6 +743,9 @@ def patient_reports(request):
     return render(request, "appointments/patient-reports.html", {
         "reports": reports,
         "appointments": appointments,
+        "search_query": search_query,
+        "selected_report_type": report_type,
+        "report_type_choices": MedicalReport.REPORT_TYPE_CHOICES,
     })
 
 
@@ -634,10 +759,50 @@ def doctor_reports(request):
         "patient__user",
         "doctor__user",
     )
+    reports, search_query, report_type = apply_report_filters(reports, request)
 
     return render(request, "appointments/doctor-reports.html", {
         "reports": reports,
+        "search_query": search_query,
+        "selected_report_type": report_type,
+        "report_type_choices": MedicalReport.REPORT_TYPE_CHOICES,
     })
+
+
+@login_required
+def preview_medical_report(request, report_id):
+    report = get_object_or_404(
+        MedicalReport.objects.select_related("patient__user", "doctor__user", "appointment"),
+        id=report_id,
+    )
+
+    if not user_can_access_report(request.user, report):
+        return HttpResponseForbidden("You are not authorized to access this report.")
+
+    return render(request, "appointments/report-preview.html", {
+        "report": report,
+        "dashboard_url": get_dashboard_name(request.user),
+    })
+
+
+@login_required
+@xframe_options_sameorigin
+def serve_medical_report(request, report_id):
+    report = get_object_or_404(
+        MedicalReport.objects.select_related("patient__user", "doctor__user", "appointment"),
+        id=report_id,
+    )
+
+    if not user_can_access_report(request.user, report):
+        return HttpResponseForbidden("You are not authorized to access this report.")
+
+    content_type, _ = mimetypes.guess_type(report.report_file.name)
+
+    return FileResponse(
+        report.report_file.open("rb"),
+        as_attachment=False,
+        content_type=content_type or "application/octet-stream",
+    )
 
 
 @login_required
@@ -647,14 +812,7 @@ def download_medical_report(request, report_id):
         id=report_id,
     )
 
-    is_report_owner = is_patient(request.user) and report.patient_id == request.user.patient.id
-    is_assigned_doctor = (
-        is_doctor(request.user)
-        and report.doctor_id is not None
-        and report.doctor_id == request.user.doctor.id
-    )
-
-    if not (is_report_owner or is_assigned_doctor):
+    if not user_can_access_report(request.user, report):
         return HttpResponseForbidden("You are not authorized to access this report.")
 
     return FileResponse(
@@ -662,6 +820,79 @@ def download_medical_report(request, report_id):
         as_attachment=True,
         filename=report.file_name,
     )
+
+
+@login_required
+@require_POST
+def delete_medical_report(request, report_id):
+    if not is_patient(request.user):
+        return HttpResponseForbidden("Only patients can delete medical reports.")
+
+    report = get_object_or_404(
+        MedicalReport.objects.select_related("doctor__user", "appointment"),
+        id=report_id,
+        patient=request.user.patient,
+    )
+
+    if report.report_file:
+        report.report_file.delete(save=False)
+    report.delete()
+
+    messages.success(request, "Medical report deleted successfully.")
+    return redirect("patient-reports")
+
+
+# ---------------- CHAT ----------------
+@login_required
+def chat_view(request, appointment_id):
+    appointment, denied_response = get_chat_appointment_for_user(request.user, appointment_id)
+    if denied_response:
+        return denied_response
+
+    chat_messages = appointment.messages.select_related("sender", "receiver")
+    other_user = (
+        appointment.doctor.user
+        if is_patient(request.user)
+        else appointment.patient.user
+    )
+
+    return render(request, "appointments/chat.html", {
+        "appointment": appointment,
+        "chat_messages": chat_messages,
+        "other_user": other_user,
+        "dashboard_url": get_dashboard_name(request.user),
+    })
+
+
+@login_required
+@require_POST
+def send_message(request, appointment_id):
+    appointment, denied_response = get_chat_appointment_for_user(request.user, appointment_id)
+    if denied_response:
+        return denied_response
+
+    message_text = request.POST.get("message_text", "").strip()
+    if not message_text:
+        messages.error(request, "Message cannot be empty.")
+        return redirect("chat", appointment_id=appointment.id)
+
+    receiver = appointment.doctor.user if is_patient(request.user) else appointment.patient.user
+    chat_message = Message(
+        sender=request.user,
+        receiver=receiver,
+        appointment=appointment,
+        message_text=message_text,
+    )
+
+    try:
+        chat_message.full_clean()
+    except ValidationError as exc:
+        error_message = exc.messages[0] if exc.messages else "Unable to send message."
+        messages.error(request, error_message)
+    else:
+        chat_message.save()
+
+    return redirect("chat", appointment_id=appointment.id)
 
 
 # ---------------- NOTIFICATIONS ----------------

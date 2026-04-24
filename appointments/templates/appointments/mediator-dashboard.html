@@ -11,6 +11,31 @@
 <div class="container">
     <h2>Mediator Dashboard</h2>
 
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:20px; margin: 20px 0;">
+        <div class="form-card">
+            <h3>Total Pending Requests</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_pending }}</p>
+        </div>
+        <div class="form-card">
+            <h3>Total Assigned Appointments</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_assigned }}</p>
+        </div>
+        <div class="form-card">
+            <h3>Total Accepted</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_accepted }}</p>
+        </div>
+        <div class="form-card">
+            <h3>Total Rejected</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_rejected }}</p>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
     <div class="dashboard-actions">
         <a href="{% url 'notifications' %}">
             <button class="btn btn-primary">Notifications</button>
@@ -30,6 +55,7 @@
     <table class="table" border="1">
         <tr>
             <th>Patient</th>
+            <th>Priority</th>
             <th>Doctor</th>
             <th>Assignment</th>
             <th>Problem</th>
@@ -42,6 +68,13 @@
         {% for appointment in appointments %}
         <tr>
             <td>{{ appointment.patient.user.username }}</td>
+            <td>
+                {% if appointment.priority == "Emergency" %}
+                    <span class="status status-rejected">Emergency</span>
+                {% else %}
+                    <span class="status status-confirmed">Normal</span>
+                {% endif %}
+            </td>
             <td>
                 {% if appointment.doctor %}
                     Dr. {{ appointment.doctor.user.username }}
@@ -94,7 +127,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="8" style="text-align:center;">No appointment requests found.</td>
+            <td colspan="9" style="text-align:center;">No appointment requests found.</td>
         </tr>
         {% endfor %}
     </table>

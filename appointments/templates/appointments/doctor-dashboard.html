@@ -11,6 +11,21 @@
 <div class="container">
     <h2>Doctor Dashboard</h2>
 
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:20px; margin: 20px 0;">
+        <div class="form-card">
+            <h3>Total Appointments Assigned</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_appointments }}</p>
+        </div>
+        <div class="form-card">
+            <h3>Total Patients Handled</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_patients }}</p>
+        </div>
+        <div class="form-card">
+            <h3>Total Reports Received</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_reports }}</p>
+        </div>
+    </div>
+
     <div class="dashboard-actions">
         <a href="{% url 'notifications' %}">
             <button class="btn btn-primary">Notifications</button>
@@ -30,6 +45,7 @@
             <th>Date</th>
             <th>Time</th>
             <th>Status</th>
+            <th>Chat</th>
             <th>Reports</th>
         </tr>
 
@@ -47,14 +63,26 @@
             </td>
             <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
             <td>
+                {% if appointment.status == "Accepted" or appointment.status == "Confirmed" %}
+                    <a href="{% url 'chat' appointment.id %}">
+                        <button class="btn btn-primary" type="button">Chat</button>
+                    </a>
+                {% else %}
+                    Not available
+                {% endif %}
+            </td>
+            <td>
                 {% with reports=appointment.medical_reports.all %}
                     {% if reports %}
                         {% for report in reports %}
                             <div style="margin-bottom: 8px;">
-                                {{ report.file_name }}
+                                {{ report.report_type }} - {{ report.file_name }}
                                 <br>
+                                <a href="{% url 'preview-medical-report' report.id %}">
+                                    <button class="btn btn-primary" type="button">View Report</button>
+                                </a>
                                 <a href="{% url 'download-medical-report' report.id %}">
-                                    <button class="btn btn-primary" type="button">View / Download</button>
+                                    <button class="btn btn-primary" type="button">Download</button>
                                 </a>
                             </div>
                         {% endfor %}
@@ -66,7 +94,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6" style="text-align:center;">No appointments available.</td>
+            <td colspan="7" style="text-align:center;">No appointments available.</td>
         </tr>
         {% endfor %}
     </table>

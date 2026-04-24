@@ -26,6 +26,12 @@
 
             <input type="date" name="date" min="{{ today }}" value="{{ form_data.date|default:today }}" required>
 
+            <label for="priority">Priority</label>
+            <select name="priority" id="priority">
+                <option value="Normal" {% if form_data.priority|default:"Normal" == "Normal" %}selected{% endif %}>Normal</option>
+                <option value="Emergency" {% if form_data.priority == "Emergency" %}selected{% endif %}>Emergency</option>
+            </select>
+
             <button class="btn btn-primary" type="submit">
                 Book Appointment
             </button>

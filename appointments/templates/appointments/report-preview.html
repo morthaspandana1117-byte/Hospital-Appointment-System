@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Report Preview</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h2>Report Preview</h2>
+
+    <div class="dashboard-actions">
+        <a href="{% url dashboard_url %}">
+            <button class="btn btn-primary">Back</button>
+        </a>
+        <a href="{% url 'download-medical-report' report.id %}">
+            <button class="btn btn-primary">Download</button>
+        </a>
+    </div>
+
+    <div class="form-card">
+        <p><strong>Appointment:</strong> #{{ report.appointment.id }}</p>
+        <p><strong>Report Type:</strong> {{ report.report_type }}</p>
+        <p><strong>File Name:</strong> {{ report.file_name }}</p>
+        <p><strong>Uploaded:</strong> {{ report.uploaded_at|date:"Y-m-d H:i" }}</p>
+        <p><strong>Description:</strong> {{ report.description|default:"-" }}</p>
+
+        {% if report.is_image %}
+            <img src="{% url 'serve-medical-report' report.id %}" alt="{{ report.file_name }}" style="max-width: 100%; border-radius: 12px;">
+        {% elif report.is_pdf %}
+            <iframe src="{% url 'serve-medical-report' report.id %}" width="100%" height="700" style="border: none; border-radius: 12px;"></iframe>
+        {% else %}
+            <p>Preview is not available for this file type.</p>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>

@@ -23,11 +23,36 @@
         </a>
     </div>
 
+    <div class="form-card">
+        <form method="get">
+            <div style="margin-bottom: 15px;">
+                <label for="q">Search Reports</label><br>
+                <input type="text" id="q" name="q" value="{{ search_query }}" placeholder="Search by file name or description">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label for="report_type">Filter by Report Type</label><br>
+                <select id="report_type" name="report_type">
+                    <option value="">All Types</option>
+                    {% for value, label in report_type_choices %}
+                    <option value="{{ value }}" {% if selected_report_type == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="dashboard-actions">
+                <button type="submit" class="btn btn-primary">Apply Filter</button>
+                <a href="{% url 'patient-reports' %}">
+                    <button type="button" class="btn btn-danger">Clear</button>
+                </a>
+            </div>
+        </form>
+    </div>
+
     <h3>Uploaded Reports</h3>
     <table class="table" border="1">
         <tr>
             <th>Appointment</th>
             <th>Doctor</th>
+            <th>Type</th>
             <th>File Name</th>
             <th>Description</th>
             <th>Upload Date</th>
@@ -44,18 +69,26 @@
                     Not assigned
                 {% endif %}
             </td>
+            <td>{{ report.report_type }}</td>
             <td>{{ report.file_name }}</td>
             <td>{{ report.description|default:"-" }}</td>
             <td>{{ report.uploaded_at|date:"Y-m-d H:i" }}</td>
             <td>
-                <a href="{% url 'download-medical-report' report.id %}">
-                    <button class="btn btn-primary">View / Download</button>
+                <a href="{% url 'preview-medical-report' report.id %}">
+                    <button class="btn btn-primary">View Report</button>
                 </a>
+                <a href="{% url 'download-medical-report' report.id %}">
+                    <button class="btn btn-primary">Download</button>
+                </a>
+                <form method="post" action="{% url 'delete-medical-report' report.id %}" style="margin-top: 8px;" onsubmit="return confirm('Delete this report?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
             </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6" style="text-align:center;">No medical reports uploaded yet.</td>
+            <td colspan="7" style="text-align:center;">No medical reports found.</td>
         </tr>
         {% endfor %}
     </table>
@@ -83,9 +116,13 @@
             <td>{{ appointment.date|default:"-" }}</td>
             <td>{{ appointment.status }}</td>
             <td>
-                <a href="{% url 'upload-medical-report' appointment.id %}">
-                    <button class="btn btn-primary">Upload Report</button>
-                </a>
+                {% if appointment.doctor %}
+                    <a href="{% url 'upload-medical-report' appointment.id %}">
+                        <button class="btn btn-primary">Upload Report</button>
+                    </a>
+                {% else %}
+                    You can upload reports only after doctor assignment
+                {% endif %}
             </td>
         </tr>
         {% endfor %}

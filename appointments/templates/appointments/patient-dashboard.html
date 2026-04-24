@@ -11,6 +11,17 @@
 <div class="container">
     <h2>My Appointments</h2>
 
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:20px; margin: 20px 0;">
+        <div class="form-card">
+            <h3>Total Appointments</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_appointments }}</p>
+        </div>
+        <div class="form-card">
+            <h3>Total Reports Uploaded</h3>
+            <p style="font-size: 2rem; font-weight: bold;">{{ analytics.total_reports }}</p>
+        </div>
+    </div>
+
     <div class="dashboard-actions">
         <a href="{% url 'notifications' %}">
             <button class="btn btn-primary">Notifications</button>
@@ -36,6 +47,7 @@
             <th>Time</th>
             <th>Status</th>
             <th>Action</th>
+            <th>Chat</th>
             <th>Token</th>
             <th>Download</th>
             <th>Reports</th>
@@ -69,6 +81,19 @@
                 {% endif %}
             </td>
             <td>
+                {% if appointment.doctor %}
+                    {% if appointment.status == "Accepted" or appointment.status == "Confirmed" %}
+                    <a href="{% url 'chat' appointment.id %}">
+                        <button class="btn btn-primary" type="button">Chat</button>
+                    </a>
+                    {% else %}
+                        Not available
+                    {% endif %}
+                {% else %}
+                    Not available
+                {% endif %}
+            </td>
+            <td>
                 {% if appointment.is_token_confirmed %}
                     {{ appointment.token_number }}
                 {% else %}
@@ -85,19 +110,27 @@
                 {% endif %}
             </td>
             <td>
-                <a href="{% url 'upload-medical-report' appointment.id %}">
-                    <button class="btn btn-primary">Upload Report</button>
-                </a>
+                {% if appointment.doctor %}
+                    <a href="{% url 'upload-medical-report' appointment.id %}">
+                        <button class="btn btn-primary">Upload Report</button>
+                    </a>
+                {% else %}
+                    <button class="btn btn-primary" type="button" disabled>Upload Report</button>
+                    <div style="margin-top: 10px;">You can upload reports only after doctor assignment</div>
+                {% endif %}
 
                 {% with reports=appointment.medical_reports.all %}
                     {% if reports %}
                         <div style="margin-top: 10px;">
                             {% for report in reports %}
                                 <div style="margin-bottom: 8px;">
-                                    {{ report.file_name }}
+                                    {{ report.report_type }} - {{ report.file_name }}
                                     <br>
+                                    <a href="{% url 'preview-medical-report' report.id %}">
+                                        <button class="btn btn-primary" type="button">View Report</button>
+                                    </a>
                                     <a href="{% url 'download-medical-report' report.id %}">
-                                        <button class="btn btn-primary" type="button">View / Download</button>
+                                        <button class="btn btn-primary" type="button">Download</button>
                                     </a>
                                 </div>
                             {% endfor %}
@@ -110,7 +143,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="8" style="text-align:center;">No appointments found.</td>
+            <td colspan="9" style="text-align:center;">No appointments found.</td>
         </tr>
         {% endfor %}
     </table>

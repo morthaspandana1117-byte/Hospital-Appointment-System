@@ -11,58 +11,70 @@
 <div class="container">
     <h2>Upload Medical Report</h2>
 
-    <p><strong>Appointment ID:</strong> {{ appointment.id }}</p>
-    <p><strong>Doctor:</strong>
-        {% if appointment.doctor %}
-            Dr. {{ appointment.doctor.user.username }}
-        {% else %}
-            Not assigned yet
+    <div class="form-card">
+        <p><strong>Appointment ID:</strong> {{ appointment.id }}</p>
+        <p><strong>Doctor:</strong>
+            {% if appointment.doctor %}
+                Dr. {{ appointment.doctor.user.username }}
+            {% else %}
+                Not assigned yet
+            {% endif %}
+        </p>
+        <p><strong>Date:</strong> {{ appointment.date|default:"-" }}</p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <p>{{ message }}</p>
+            {% endfor %}
         {% endif %}
-    </p>
-    <p><strong>Date:</strong> {{ appointment.date|default:"-" }}</p>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+        {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        {% endif %}
 
-    {% if form.non_field_errors %}
-        {% for error in form.non_field_errors %}
-            <p>{{ error }}</p>
-        {% endfor %}
-    {% endif %}
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
 
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
+            <div style="margin-bottom: 15px;">
+                <label for="{{ form.report_type.id_for_label }}">Report Type</label><br>
+                {{ form.report_type }}
+                {% if form.report_type.errors %}
+                    {% for error in form.report_type.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
 
-        <div style="margin-bottom: 15px;">
-            <label for="{{ form.report_file.id_for_label }}">Report File</label><br>
-            {{ form.report_file }}
-            {% if form.report_file.errors %}
-                {% for error in form.report_file.errors %}
-                    <p>{{ error }}</p>
-                {% endfor %}
-            {% endif %}
-        </div>
+            <div style="margin-bottom: 15px;">
+                <label for="{{ form.report_file.id_for_label }}">Report File</label><br>
+                {{ form.report_file }}
+                {% if form.report_file.errors %}
+                    {% for error in form.report_file.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
 
-        <div style="margin-bottom: 15px;">
-            <label for="{{ form.description.id_for_label }}">Description</label><br>
-            {{ form.description }}
-            {% if form.description.errors %}
-                {% for error in form.description.errors %}
-                    <p>{{ error }}</p>
-                {% endfor %}
-            {% endif %}
-        </div>
+            <div style="margin-bottom: 15px;">
+                <label for="{{ form.description.id_for_label }}">Description</label><br>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    {% for error in form.description.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
 
-        <div class="dashboard-actions">
-            <button type="submit" class="btn btn-primary">Upload Report</button>
-            <a href="{% url 'patient-dashboard' %}">
-                <button type="button" class="btn btn-danger">Back</button>
-            </a>
-        </div>
-    </form>
+            <div class="dashboard-actions">
+                <button type="submit" class="btn btn-primary">Upload Report</button>
+                <a href="{% url 'patient-dashboard' %}">
+                    <button type="button" class="btn btn-danger">Back</button>
+                </a>
+            </div>
+        </form>
+    </div>
 </div>
 
 </body>
