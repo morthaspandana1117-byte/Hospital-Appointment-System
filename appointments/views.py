@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import FileResponse, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
@@ -13,7 +13,8 @@ from django.views.decorators.http import require_POST
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-from .models import Appointment, Doctor, Mediator, Notification, Patient
+from .forms import MedicalReportForm
+from .models import Appointment, Doctor, MedicalReport, Mediator, Notification, Patient
 
 
 def create_notification(user, message):
@@ -203,7 +204,7 @@ def patient_dashboard(request):
 
     appointments = Appointment.objects.filter(patient=request.user.patient).select_related(
         "doctor__user", "patient__user"
-    )
+    ).prefetch_related("medical_reports")
     return render(request, "appointments/patient-dashboard.html", {"appointments": appointments})
 
 
@@ -215,7 +216,7 @@ def doctor_dashboard(request):
 
     appointments = Appointment.objects.filter(doctor=request.user.doctor).select_related(
         "patient__user", "doctor__user"
-    ).order_by("-date", "-time")
+    ).prefetch_related("medical_reports").order_by("-date", "-time")
 
     return render(request, "appointments/doctor-dashboard.html", {
         "appointments": appointments
@@ -563,6 +564,104 @@ def download_token(request, id):
 
     doc.build(elements)
     return response
+
+
+# ---------------- MEDICAL REPORTS ----------------
+@login_required
+def upload_medical_report(request, appointment_id):
+    if not is_patient(request.user):
+        return HttpResponseForbidden("Only patients can upload medical reports.")
+
+    appointment = get_object_or_404(
+        Appointment.objects.select_related("doctor__user", "patient__user"),
+        id=appointment_id,
+        patient=request.user.patient,
+    )
+
+    if request.method == "POST":
+        form = MedicalReportForm(request.POST, request.FILES)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.patient = request.user.patient
+            report.doctor = appointment.doctor
+            report.appointment = appointment
+            report.save()
+
+            if appointment.doctor:
+                create_notification(
+                    appointment.doctor.user,
+                    f"{request.user.username} uploaded a medical report for appointment #{appointment.id}."
+                )
+
+            messages.success(request, "Medical report uploaded successfully.")
+            return redirect("patient-reports")
+    else:
+        form = MedicalReportForm()
+
+    return render(request, "appointments/upload-report.html", {
+        "form": form,
+        "appointment": appointment,
+    })
+
+
+@login_required
+def patient_reports(request):
+    if not is_patient(request.user):
+        return redirect(get_dashboard_name(request.user))
+
+    reports = MedicalReport.objects.filter(patient=request.user.patient).select_related(
+        "appointment",
+        "doctor__user",
+        "patient__user",
+    )
+    appointments = Appointment.objects.filter(patient=request.user.patient).select_related(
+        "doctor__user"
+    ).prefetch_related("medical_reports")
+
+    return render(request, "appointments/patient-reports.html", {
+        "reports": reports,
+        "appointments": appointments,
+    })
+
+
+@login_required
+def doctor_reports(request):
+    if not is_doctor(request.user):
+        return redirect(get_dashboard_name(request.user))
+
+    reports = MedicalReport.objects.filter(doctor=request.user.doctor).select_related(
+        "appointment",
+        "patient__user",
+        "doctor__user",
+    )
+
+    return render(request, "appointments/doctor-reports.html", {
+        "reports": reports,
+    })
+
+
+@login_required
+def download_medical_report(request, report_id):
+    report = get_object_or_404(
+        MedicalReport.objects.select_related("patient__user", "doctor__user", "appointment"),
+        id=report_id,
+    )
+
+    is_report_owner = is_patient(request.user) and report.patient_id == request.user.patient.id
+    is_assigned_doctor = (
+        is_doctor(request.user)
+        and report.doctor_id is not None
+        and report.doctor_id == request.user.doctor.id
+    )
+
+    if not (is_report_owner or is_assigned_doctor):
+        return HttpResponseForbidden("You are not authorized to access this report.")
+
+    return FileResponse(
+        report.report_file.open("rb"),
+        as_attachment=True,
+        filename=report.file_name,
+    )
 
 
 # ---------------- NOTIFICATIONS ----------------

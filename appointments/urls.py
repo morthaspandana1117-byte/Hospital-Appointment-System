@@ -19,6 +19,10 @@ urlpatterns = [
     path('profile/', views.edit_profile, name='profile'),
     path('notifications/', views.notifications, name='notifications'),
     path('download-token/<int:id>/', views.download_token, name='download-token'),
+    path('appointments/<int:appointment_id>/reports/upload/', views.upload_medical_report, name='upload-medical-report'),
+    path('patient-reports/', views.patient_reports, name='patient-reports'),
+    path('doctor-reports/', views.doctor_reports, name='doctor-reports'),
+    path('reports/<int:report_id>/download/', views.download_medical_report, name='download-medical-report'),
 
     path('mediator/accept/<int:id>/', views.accept, name='accept'),
     path('mediator/reject/<int:id>/', views.reject, name='reject'),

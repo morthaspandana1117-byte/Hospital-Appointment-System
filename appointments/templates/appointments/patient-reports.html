@@ -1,0 +1,96 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Medical Reports</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h2>My Medical Reports</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <div class="dashboard-actions">
+        <a href="{% url 'patient-dashboard' %}">
+            <button class="btn btn-primary">Back to Dashboard</button>
+        </a>
+    </div>
+
+    <h3>Uploaded Reports</h3>
+    <table class="table" border="1">
+        <tr>
+            <th>Appointment</th>
+            <th>Doctor</th>
+            <th>File Name</th>
+            <th>Description</th>
+            <th>Upload Date</th>
+            <th>Action</th>
+        </tr>
+
+        {% for report in reports %}
+        <tr>
+            <td>#{{ report.appointment.id }}</td>
+            <td>
+                {% if report.doctor %}
+                    Dr. {{ report.doctor.user.username }}
+                {% else %}
+                    Not assigned
+                {% endif %}
+            </td>
+            <td>{{ report.file_name }}</td>
+            <td>{{ report.description|default:"-" }}</td>
+            <td>{{ report.uploaded_at|date:"Y-m-d H:i" }}</td>
+            <td>
+                <a href="{% url 'download-medical-report' report.id %}">
+                    <button class="btn btn-primary">View / Download</button>
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" style="text-align:center;">No medical reports uploaded yet.</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h3>Upload by Appointment</h3>
+    <table class="table" border="1">
+        <tr>
+            <th>Appointment</th>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+
+        {% for appointment in appointments %}
+        <tr>
+            <td>#{{ appointment.id }}</td>
+            <td>
+                {% if appointment.doctor %}
+                    Dr. {{ appointment.doctor.user.username }}
+                {% else %}
+                    Not assigned
+                {% endif %}
+            </td>
+            <td>{{ appointment.date|default:"-" }}</td>
+            <td>{{ appointment.status }}</td>
+            <td>
+                <a href="{% url 'upload-medical-report' appointment.id %}">
+                    <button class="btn btn-primary">Upload Report</button>
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+</body>
+</html>

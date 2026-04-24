@@ -21,6 +21,10 @@
         <a href="{% url 'booking' %}">
             <button class="btn btn-primary">Book New Appointment</button>
         </a>
+
+        <a href="{% url 'patient-reports' %}">
+            <button class="btn btn-primary">My Reports</button>
+        </a>
     </div>
 
     <br><br>
@@ -34,6 +38,7 @@
             <th>Action</th>
             <th>Token</th>
             <th>Download</th>
+            <th>Reports</th>
         </tr>
 
         {% for appointment in appointments %}
@@ -79,10 +84,33 @@
                     -
                 {% endif %}
             </td>
+            <td>
+                <a href="{% url 'upload-medical-report' appointment.id %}">
+                    <button class="btn btn-primary">Upload Report</button>
+                </a>
+
+                {% with reports=appointment.medical_reports.all %}
+                    {% if reports %}
+                        <div style="margin-top: 10px;">
+                            {% for report in reports %}
+                                <div style="margin-bottom: 8px;">
+                                    {{ report.file_name }}
+                                    <br>
+                                    <a href="{% url 'download-medical-report' report.id %}">
+                                        <button class="btn btn-primary" type="button">View / Download</button>
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div style="margin-top: 10px;">No reports uploaded</div>
+                    {% endif %}
+                {% endwith %}
+            </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="7" style="text-align:center;">No appointments found.</td>
+            <td colspan="8" style="text-align:center;">No appointments found.</td>
         </tr>
         {% endfor %}
     </table>

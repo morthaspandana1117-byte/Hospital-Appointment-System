@@ -133,3 +133,5 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+MEDICAL_REPORT_MAX_UPLOAD_SIZE = 5 * 1024 * 1024

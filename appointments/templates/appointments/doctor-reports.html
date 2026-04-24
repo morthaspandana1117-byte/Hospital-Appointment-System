@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient Medical Reports</title>
+    <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h2>Patient Medical Reports</h2>
+
+    <div class="dashboard-actions">
+        <a href="{% url 'doctor-dashboard' %}">
+            <button class="btn btn-primary">Back to Dashboard</button>
+        </a>
+    </div>
+
+    <table class="table" border="1">
+        <tr>
+            <th>Appointment</th>
+            <th>Patient</th>
+            <th>File Name</th>
+            <th>Description</th>
+            <th>Upload Date</th>
+            <th>Action</th>
+        </tr>
+
+        {% for report in reports %}
+        <tr>
+            <td>#{{ report.appointment.id }}</td>
+            <td>{{ report.patient.user.username }}</td>
+            <td>{{ report.file_name }}</td>
+            <td>{{ report.description|default:"-" }}</td>
+            <td>{{ report.uploaded_at|date:"Y-m-d H:i" }}</td>
+            <td>
+                <a href="{% url 'download-medical-report' report.id %}">
+                    <button class="btn btn-primary">View / Download</button>
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" style="text-align:center;">No reports available for your appointments.</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+</body>
+</html>

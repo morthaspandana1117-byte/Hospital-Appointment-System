@@ -1,10 +1,12 @@
+import os
+import uuid
 from datetime import date
 
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 from django.db import models
-
-import uuid
 
 
 class Patient(models.Model):
@@ -66,6 +68,64 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"{self.patient} - {self.doctor}"
+
+
+def report_upload_path(instance, filename):
+    extension = os.path.splitext(filename)[1]
+    unique_name = f"{uuid.uuid4().hex}{extension.lower()}"
+    return f"reports/patient_{instance.patient_id}/{unique_name}"
+
+
+def validate_report_file_size(value):
+    max_size = getattr(settings, "MEDICAL_REPORT_MAX_UPLOAD_SIZE", 5 * 1024 * 1024)
+    if value.size > max_size:
+        raise ValidationError("Report file size must be 5 MB or less.")
+
+
+class MedicalReport(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="medical_reports")
+    doctor = models.ForeignKey(
+        Doctor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="medical_reports",
+    )
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name="medical_reports",
+    )
+    report_file = models.FileField(
+        upload_to=report_upload_path,
+        validators=[
+            FileExtensionValidator(allowed_extensions=["pdf", "jpg", "jpeg", "png"]),
+            validate_report_file_size,
+        ],
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def clean(self):
+        if self.appointment_id and self.patient_id != self.appointment.patient_id:
+            raise ValidationError({
+                "appointment": "This report must belong to one of the patient's appointments."
+            })
+
+        if self.doctor_id and self.appointment.doctor_id != self.doctor_id:
+            raise ValidationError({
+                "doctor": "The selected doctor must match the appointment doctor."
+            })
+
+    def __str__(self):
+        return f"Report for appointment #{self.appointment_id}"
+
+    @property
+    def file_name(self):
+        return os.path.basename(self.report_file.name)
 
 
 class Notification(models.Model):
