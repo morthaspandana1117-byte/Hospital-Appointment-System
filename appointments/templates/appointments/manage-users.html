@@ -4,6 +4,76 @@
 <head>
     <title>Manage Users</title>
     <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <style>
+        /* Clean white background for manage users page */
+        .manage-users-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 1200px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .manage-users-container h2 {
+            color: #27ae60;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .section-toggle {
+            margin: 10px 0;
+        }
+        
+        .section-toggle .btn {
+            min-width: 150px;
+            padding: 12px 24px;
+            font-size: 14px;
+        }
+        
+        .users-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .users-table th {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        .users-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            color: #333;
+        }
+        
+        .users-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-approved {
+            color: #27ae60;
+            font-weight: 600;
+        }
+        
+        .status-pending {
+            color: #f39c12;
+            font-weight: 600;
+        }
+        
+        .back-btn {
+            margin-top: 20px;
+        }
+        
+        .back-btn .btn {
+            min-width: 180px;
+        }
+    </style>
 
     <script>
         function toggleSection(id) {
@@ -24,92 +94,99 @@
 <body>
 
 <div class="container">
-    <h2>Manage Users</h2>
+    <div class="manage-users-container">
+        <h2>Manage Users</h2>
 
-    <!-- PATIENT DROPDOWN -->
-    <button class="btn btn-primary" onclick="toggleSection('patientsSection')">
-        Patients ▼
-    </button>
+        <!-- PATIENT DROPDOWN -->
+        <div class="section-toggle">
+            <button class="btn btn-primary" onclick="toggleSection('patientsSection')">
+                Patients ▼
+            </button>
+        </div>
 
-    <div id="patientsSection" style="display:none; margin-top:15px;">
-        <table class="table">
-            <tr>
-                <th>Name</th>
-                <th>No. of Appointments</th>
-                <th>Action</th>
-            </tr>
+        <div id="patientsSection" style="display:none; margin-top:15px;">
+            <table class="table users-table">
+                <tr>
+                    <th>Name</th>
+                    <th>No. of Appointments</th>
+                    <th>Action</th>
+                </tr>
 
-            {% for item in patients %}
-            <tr>
-                <td>{{ item.patient.user.username }}</td>
-                <td>{{ item.appointments }}</td>
-                <td>
-                    <form method="POST" action="{% url 'delete-user' item.patient.user.id %}" 
-                        onsubmit="return confirmDelete()">
-                        {% csrf_token %}
-                        <button class="btn btn-danger">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="3">No patients found</td>
-            </tr>
-            {% endfor %}
-        </table>
+                {% for item in patients %}
+                <tr>
+                    <td>{{ item.patient.user.username }}</td>
+                    <td>{{ item.appointments }}</td>
+                    <td>
+                        <form method="POST" action="{% url 'delete-user' item.patient.user.id %}" 
+                            onsubmit="return confirmDelete()">
+                            {% csrf_token %}
+                            <button class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">No patients found</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <br>
+
+        <!-- DOCTOR DROPDOWN -->
+        <div class="section-toggle">
+            <button class="btn btn-primary" onclick="toggleSection('doctorsSection')">
+                Doctors ▼
+            </button>
+        </div>
+
+        <div id="doctorsSection" style="display:none; margin-top:15px;">
+            <table class="table users-table">
+                <tr>
+                    <th>Name</th>
+                    <th>Specialization</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+
+                {% for doctor in doctors %}
+                <tr>
+                    <td>{{ doctor.user.username }}</td>
+                    <td>{{ doctor.specialization }}</td>
+
+                    <td>
+                        {% if doctor.is_verified %}
+                            <span class="status-approved">Verified</span>
+                        {% else %}
+                            <span class="status-pending">Not Verified</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <form method="POST" action="{% url 'delete-user' doctor.user.id %}" 
+                            onsubmit="return confirmDelete()">
+                            {% csrf_token %}
+                            <button class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">No doctors found</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <br><br>
+
+        <div class="back-btn">
+            <a href="{% url 'admin-dashboard' %}">
+                <button class="btn btn-primary">Back to Dashboard</button>
+            </a>
+        </div>
     </div>
-
-    <br>
-
-    <!-- DOCTOR DROPDOWN -->
-    <button class="btn btn-primary" onclick="toggleSection('doctorsSection')">
-        Doctors ▼
-    </button>
-
-    <div id="doctorsSection" style="display:none; margin-top:15px;">
-        <table class="table">
-            <tr>
-                <th>Name</th>
-                <th>Specialization</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-
-            {% for doctor in doctors %}
-            <tr>
-                <td>{{ doctor.user.username }}</td>
-                <td>{{ doctor.specialization }}</td>
-
-                <td>
-                    {% if doctor.is_verified %}
-                        <span class="status-approved">Verified</span>
-                    {% else %}
-                        <span class="status-pending">Not Verified</span>
-                    {% endif %}
-                </td>
-
-                <td>
-                    <form method="POST" action="{% url 'delete-user' doctor.user.id %}" 
-                        onsubmit="return confirmDelete()">
-                        {% csrf_token %}
-                        <button class="btn btn-danger">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4">No doctors found</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-
-    <br><br>
-
-    <a href="{% url 'admin-dashboard' %}">
-        <button class="btn">Back to Dashboard</button>
-    </a>
-
 </div>
 
 </body>

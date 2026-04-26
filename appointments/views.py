@@ -6,9 +6,10 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.http import FileResponse, HttpResponse, HttpResponseForbidden
+from django.http import FileResponse, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
@@ -93,6 +94,19 @@ def get_chat_appointment_for_user(user, appointment_id):
         return None, HttpResponseForbidden("Chat is not available until a doctor is assigned.")
 
     return appointment, None
+
+
+def serialize_chat_message(message, current_user):
+    timestamp = timezone.localtime(message.timestamp)
+    is_self = message.sender_id == current_user.id
+
+    return {
+        "id": message.id,
+        "message_text": message.message_text,
+        "timestamp": timestamp.strftime("%b %d, %Y %I:%M %p"),
+        "sender_name": message.sender.get_full_name() or message.sender.username,
+        "is_self": is_self,
+    }
 
 
 def apply_report_filters(queryset, request):
@@ -272,9 +286,27 @@ def patient_dashboard(request):
         "total_appointments": appointments.count(),
         "total_reports": MedicalReport.objects.filter(patient=request.user.patient).count(),
     }
+    
+    # Get unread message count for the current user
+    unread_messages_count = Message.objects.filter(receiver=request.user, is_read=False).count()
+    
+    # Get unread count per appointment
+    appointment_unread_counts = {}
+    for appointment in appointments:
+        if appointment.doctor:
+            count = Message.objects.filter(
+                receiver=request.user,
+                appointment=appointment,
+                is_read=False
+            ).count()
+            if count > 0:
+                appointment_unread_counts[appointment.id] = count
+    
     return render(request, "appointments/patient-dashboard.html", {
         "appointments": appointments,
         "analytics": analytics,
+        "unread_messages_count": unread_messages_count,
+        "appointment_unread_counts": appointment_unread_counts,
     })
 
 
@@ -293,9 +325,26 @@ def doctor_dashboard(request):
         "total_reports": MedicalReport.objects.filter(doctor=request.user.doctor).count(),
     }
 
+    # Get unread message count for the current user
+    unread_messages_count = Message.objects.filter(receiver=request.user, is_read=False).count()
+
+    # Get unread count per appointment
+    appointment_unread_counts = {}
+    for appointment in appointments:
+        if appointment.patient:
+            count = Message.objects.filter(
+                receiver=request.user,
+                appointment=appointment,
+                is_read=False
+            ).count()
+            if count > 0:
+                appointment_unread_counts[appointment.id] = count
+
     return render(request, "appointments/doctor-dashboard.html", {
         "appointments": appointments,
         "analytics": analytics,
+        "unread_messages_count": unread_messages_count,
+        "appointment_unread_counts": appointment_unread_counts,
     })
 
 
@@ -371,10 +420,41 @@ def admin_dashboard(request):
         "cancelled_count": appointment_status_counts.get("Cancelled", 0),
     }
 
+    # Bar chart data: Appointments per day for the last 7 days
+    from datetime import timedelta
+    from django.utils import timezone
+    
+    today = timezone.now().date()
+    bar_chart_labels = []
+    bar_chart_data = []
+    
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_start = timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time()))
+        day_end = timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.max.time()))
+        
+        count = Appointment.objects.filter(date__range=[day_start, day_end]).count()
+        bar_chart_labels.append(day.strftime("%b %d"))
+        bar_chart_data.append(count)
+    
+    # Pie chart data: Status distribution
+    pie_chart_labels = ["Pending", "Accepted", "Rejected", "Confirmed", "Cancelled"]
+    pie_chart_data = [
+        appointment_status_counts.get("Pending", 0),
+        appointment_status_counts.get("Accepted", 0),
+        appointment_status_counts.get("Rejected", 0),
+        appointment_status_counts.get("Confirmed", 0),
+        appointment_status_counts.get("Cancelled", 0),
+    ]
+
     return render(request, "appointments/admin-dashboard.html", {
         "appointments": appointments,
         "doctors": doctors,
         "analytics": analytics,
+        "bar_chart_labels": bar_chart_labels,
+        "bar_chart_data": bar_chart_data,
+        "pie_chart_labels": pie_chart_labels,
+        "pie_chart_data": pie_chart_data,
     })
 
 
@@ -849,18 +929,44 @@ def chat_view(request, appointment_id):
     if denied_response:
         return denied_response
 
-    chat_messages = appointment.messages.select_related("sender", "receiver")
     other_user = (
         appointment.doctor.user
         if is_patient(request.user)
         else appointment.patient.user
     )
+    other_user_name = other_user.get_full_name() or other_user.username
+
+    # Mark all messages for this appointment as read where current user is the receiver
+    Message.objects.filter(
+        receiver=request.user,
+        appointment=appointment
+    ).update(is_read=True)
 
     return render(request, "appointments/chat.html", {
         "appointment": appointment,
-        "chat_messages": chat_messages,
         "other_user": other_user,
+        "other_user_name": other_user_name,
         "dashboard_url": get_dashboard_name(request.user),
+    })
+
+
+@login_required
+def chat_messages_api(request, appointment_id):
+    appointment, denied_response = get_chat_appointment_for_user(request.user, appointment_id)
+    if denied_response:
+        return denied_response
+
+    after_id = request.GET.get("after")
+    chat_messages = appointment.messages.select_related("sender", "receiver")
+
+    if after_id and after_id.isdigit():
+        chat_messages = chat_messages.filter(id__gt=int(after_id))
+
+    return JsonResponse({
+        "messages": [
+            serialize_chat_message(chat_message, request.user)
+            for chat_message in chat_messages
+        ],
     })
 
 
@@ -873,6 +979,8 @@ def send_message(request, appointment_id):
 
     message_text = request.POST.get("message_text", "").strip()
     if not message_text:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"error": "Message cannot be empty."}, status=400)
         messages.error(request, "Message cannot be empty.")
         return redirect("chat", appointment_id=appointment.id)
 
@@ -888,9 +996,15 @@ def send_message(request, appointment_id):
         chat_message.full_clean()
     except ValidationError as exc:
         error_message = exc.messages[0] if exc.messages else "Unable to send message."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"error": error_message}, status=400)
         messages.error(request, error_message)
     else:
         chat_message.save()
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "message": serialize_chat_message(chat_message, request.user),
+            }, status=201)
 
     return redirect("chat", appointment_id=appointment.id)
 

@@ -5,6 +5,15 @@
     <title>Login</title>
     <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
     <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <style>
+        /* Smaller, properly styled login button */
+        .login-form .btn {
+            padding: 12px 40px;
+            min-width: 150px;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+    </style>
 </head>
 <body>
 
@@ -25,7 +34,7 @@
         {% endfor %}
     {% endif %}
 
-    <form method="POST">
+    <form method="POST" class="login-form">
         {% csrf_token %}
         <input type="text" name="username" placeholder="Username" required>
         <input type="password" name="password" placeholder="Password" required>

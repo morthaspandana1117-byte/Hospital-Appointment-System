@@ -23,6 +23,7 @@ urlpatterns = [
     path('patient-reports/', views.patient_reports, name='patient-reports'),
     path('doctor-reports/', views.doctor_reports, name='doctor-reports'),
     path('appointments/<int:appointment_id>/chat/', views.chat_view, name='chat'),
+    path('appointments/<int:appointment_id>/chat/messages/', views.chat_messages_api, name='chat-messages-api'),
     path('appointments/<int:appointment_id>/chat/send/', views.send_message, name='send-message'),
     path('reports/<int:report_id>/preview/', views.preview_medical_report, name='preview-medical-report'),
     path('reports/<int:report_id>/file/', views.serve_medical_report, name='serve-medical-report'),

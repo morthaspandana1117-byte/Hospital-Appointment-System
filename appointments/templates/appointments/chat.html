@@ -3,63 +3,198 @@
 <html>
 <head>
     <title>Appointment Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
     <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
 </head>
 <body>
 
-<div class="container">
-    <h2>Appointment Chat</h2>
-
-    <div class="dashboard-actions">
-        <a href="{% url dashboard_url %}">
-            <button class="btn btn-primary">Back</button>
-        </a>
-    </div>
-
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
-    <div class="form-card chat-card">
-        <p><strong>Appointment:</strong> #{{ appointment.id }}</p>
-        <p><strong>Patient:</strong> {{ appointment.patient.user.username }}</p>
-        <p><strong>Doctor:</strong> Dr. {{ appointment.doctor.user.username }}</p>
-        <p class="chat-notice">For your safety, please avoid sharing personal contact details or sensitive private information in chat.</p>
-
-        <div class="chat-window" id="chat-window">
-            {% for item in chat_messages %}
-            <div class="chat-bubble {% if item.sender == request.user %}chat-bubble-self{% else %}chat-bubble-other{% endif %}">
-                <div class="chat-meta">
-                    {{ item.sender.username }} • {{ item.timestamp|date:"Y-m-d H:i" }}
-                </div>
-                <div>{{ item.message_text|linebreaksbr }}</div>
+<div class="container chat-page">
+    <div class="chat-shell">
+        <div class="chat-header">
+            <a href="{% url dashboard_url %}" class="chat-back-link">Back</a>
+            <div>
+                <h2>Appointment Chat</h2>
+                <p>Appointment #{{ appointment.id }} with {{ other_user_name }}</p>
             </div>
-            {% empty %}
-            <div class="empty-state">No messages yet. Start the conversation below.</div>
-            {% endfor %}
         </div>
 
-        <form method="post" action="{% url 'send-message' appointment.id %}" class="chat-form">
-            {% csrf_token %}
-            <textarea name="message_text" rows="4" placeholder="Type your message here..." required></textarea>
-            <div class="dashboard-actions">
-                <button type="submit" class="btn btn-primary">Send Message</button>
+        {% if messages %}
+            <div class="chat-alerts">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
             </div>
+        {% endif %}
+
+        <div class="chat-appointment-summary">
+            <span>Patient: {{ appointment.patient.user.username }}</span>
+            <span>Doctor: Dr. {{ appointment.doctor.user.username }}</span>
+        </div>
+
+        <p class="chat-notice">For your safety, please avoid sharing personal contact details or sensitive private information in chat.</p>
+
+        <div
+            class="chat-window"
+            id="chat-window"
+            data-fetch-url="{% url 'chat-messages-api' appointment.id %}"
+            data-send-url="{% url 'send-message' appointment.id %}"
+        >
+            <div class="empty-state chat-empty" id="chat-empty">No messages yet. Start the conversation below.</div>
+        </div>
+
+        <form method="post" action="{% url 'send-message' appointment.id %}" class="chat-form" id="chat-form">
+            {% csrf_token %}
+            <textarea name="message_text" id="message-input" rows="1" placeholder="Type a message..." required></textarea>
+            <button type="submit" class="chat-send-button" id="send-button">Send</button>
         </form>
     </div>
 </div>
 
 <script>
     const chatWindow = document.getElementById("chat-window");
-    if (chatWindow) {
+    const chatForm = document.getElementById("chat-form");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const emptyState = document.getElementById("chat-empty");
+    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    let lastMessageId = 0;
+    let isFetching = false;
+
+    function shouldAutoScroll() {
+        return chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight < 100;
+    }
+
+    function scrollToLatest() {
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
-    setTimeout(function () {
-        window.location.reload();
-    }, 30000);
+
+    function makeMessageElement(message) {
+        const row = document.createElement("div");
+        row.className = `chat-message-row ${message.is_self ? "chat-message-row-self" : "chat-message-row-other"}`;
+        row.dataset.messageId = message.id;
+
+        const bubble = document.createElement("div");
+        bubble.className = `chat-bubble ${message.is_self ? "chat-bubble-self" : "chat-bubble-other"}`;
+
+        if (!message.is_self) {
+            const sender = document.createElement("div");
+            sender.className = "chat-sender";
+            sender.textContent = message.sender_name;
+            bubble.appendChild(sender);
+        }
+
+        const text = document.createElement("div");
+        text.className = "chat-text";
+        text.textContent = message.message_text;
+        bubble.appendChild(text);
+
+        const time = document.createElement("div");
+        time.className = "chat-time";
+        time.textContent = message.timestamp;
+        bubble.appendChild(time);
+
+        row.appendChild(bubble);
+        return row;
+    }
+
+    function appendMessages(messages) {
+        if (!messages.length) {
+            return;
+        }
+
+        const keepPinnedToBottom = shouldAutoScroll();
+        emptyState.hidden = true;
+
+        messages.forEach((message) => {
+            if (document.querySelector(`[data-message-id="${message.id}"]`)) {
+                return;
+            }
+
+            chatWindow.appendChild(makeMessageElement(message));
+            lastMessageId = Math.max(lastMessageId, message.id);
+        });
+
+        if (keepPinnedToBottom) {
+            scrollToLatest();
+        }
+    }
+
+    async function fetchMessages(onlyNew = true) {
+        if (isFetching) {
+            return;
+        }
+
+        isFetching = true;
+        const url = new URL(chatWindow.dataset.fetchUrl, window.location.origin);
+        if (onlyNew && lastMessageId) {
+            url.searchParams.set("after", lastMessageId);
+        }
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            appendMessages(data.messages || []);
+            emptyState.hidden = chatWindow.querySelectorAll(".chat-message-row").length > 0;
+        } finally {
+            isFetching = false;
+        }
+    }
+
+    chatForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const messageText = messageInput.value.trim();
+        if (!messageText) {
+            return;
+        }
+
+        sendButton.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append("message_text", messageText);
+
+            const response = await fetch(chatWindow.dataset.sendUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.message) {
+                messageInput.value = "";
+                messageInput.style.height = "auto";
+                appendMessages([data.message]);
+                scrollToLatest();
+            }
+        } finally {
+            sendButton.disabled = false;
+            messageInput.focus();
+        }
+    });
+
+    messageInput.addEventListener("input", () => {
+        messageInput.style.height = "auto";
+        messageInput.style.height = `${Math.min(messageInput.scrollHeight, 130)}px`;
+    });
+
+    fetchMessages(false).then(scrollToLatest);
+    setInterval(fetchMessages, 4000);
 </script>
 
 </body>
