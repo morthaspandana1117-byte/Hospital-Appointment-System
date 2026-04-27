@@ -111,17 +111,40 @@
             </td>
             <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
             <td>
-                {% if appointment.status == "Pending" %}
+                {% if appointment.status == "Requested" %}
+                    {# Requested status - Mediator needs to assign a doctor #}
+                    <form method="post" action="{% url 'assign-doctor-view' appointment.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <select name="doctor_id" required style="width: 120px;">
+                            <option value="">Select Doctor</option>
+                            {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}">Dr. {{ doctor.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 5px;">Assign</button>
+                    </form>
+                {% elif appointment.status == "Assigned" %}
+                    {# Assigned status - Can accept/reject #}
                     <form method="post" action="{% url 'accept' appointment.id %}" style="display:inline;">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-primary">Accept</button>
+                        <button type="submit" class="btn btn-success">Accept</button>
                     </form>
                     <form method="post" action="{% url 'reject' appointment.id %}" style="display:inline;">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger">Reject</button>
                     </form>
+                {% elif appointment.status == "Accepted" %}
+                    <span class="status status-accepted">Accepted</span>
+                    <form method="post" action="{% url 'complete-appointment' appointment.id %}" style="display:inline; margin-left: 5px;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Complete</button>
+                    </form>
+                {% elif appointment.status == "Completed" %}
+                    <span class="status status-completed">Completed</span>
+                {% elif appointment.status == "Cancelled" %}
+                    <span class="status status-cancelled">Cancelled</span>
                 {% else %}
-                    No action needed
+                    <span style="color: #ccc;">No action needed</span>
                 {% endif %}
             </td>
         </tr>

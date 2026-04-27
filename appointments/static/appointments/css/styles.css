@@ -134,6 +134,13 @@ label {
   box-shadow: 0 12px 35px rgba(46, 204, 113, 0.6);
 }
 
+/* Smaller button variant */
+.btn-sm {
+  padding: 10px 24px;
+  min-width: 140px;
+  font-size: 13px;
+}
+
 .btn-danger {
   background: linear-gradient(45deg, #ff4757, #ff3838);
   color: white;
@@ -217,6 +224,49 @@ label {
 .status-unread {
   background: rgba(237, 137, 54, 0.22);
   color: #feebc8;
+}
+
+/* ==================== Appointment Status Lifecycle Badges ==================== */
+/* Requested (orange) - Patient has requested appointment */
+.status-requested, .status-requested {
+  background: rgba(237, 137, 54, 0.25);
+  color: #feebc8;
+  border: 1px solid rgba(237, 137, 54, 0.5);
+}
+
+/* Assigned (blue) - Doctor has been assigned by mediator */
+.status-assigned {
+  background: rgba(66, 153, 225, 0.25);
+  color: #bee3f8;
+  border: 1px solid rgba(66, 153, 225, 0.5);
+}
+
+/* Accepted (green) - Doctor has accepted the appointment */
+.status-accepted {
+  background: rgba(72, 187, 120, 0.25);
+  color: #c6f6d5;
+  border: 1px solid rgba(72, 187, 120, 0.5);
+}
+
+/* Completed (dark green) - Appointment completed successfully */
+.status-completed {
+  background: rgba(56, 161, 105, 0.3);
+  color: #9ae6b4;
+  border: 1px solid rgba(56, 161, 105, 0.5);
+}
+
+/* Cancelled (red) - Appointment cancelled */
+.status-cancelled {
+  background: rgba(245, 101, 101, 0.25);
+  color: #fed7d7;
+  border: 1px solid rgba(245, 101, 101, 0.5);
+}
+
+/* Default status */
+.status-default {
+  background: rgba(160, 174, 192, 0.25);
+  color: #e2e8f0;
+  border: 1px solid rgba(160, 174, 192, 0.5);
 }
 
 .notifications-card {

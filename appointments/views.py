@@ -47,6 +47,86 @@ def get_dashboard_name(user):
     return "patient-dashboard"
 
 
+# ==================== ROLE-BASED ACCESS CONTROL DECORATORS ====================
+
+def patient_required(view_func):
+    """Decorator to ensure only patients can access the view"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, "Please login to access this page.")
+            return redirect("login")
+        if not is_patient(request.user):
+            messages.error(request, "Access denied. This page is only for patients.")
+            return redirect(get_dashboard_name(request.user))
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def doctor_required(view_func):
+    """Decorator to ensure only doctors can access the view"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, "Please login to access this page.")
+            return redirect("login")
+        if not is_doctor(request.user):
+            messages.error(request, "Access denied. This page is only for doctors.")
+            return redirect(get_dashboard_name(request.user))
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def mediator_required(view_func):
+    """Decorator to ensure only mediators can access the view"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, "Please login to access this page.")
+            return redirect("login")
+        if not is_mediator(request.user):
+            messages.error(request, "Access denied. This page is only for mediators.")
+            return redirect(get_dashboard_name(request.user))
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def admin_required(view_func):
+    """Decorator to ensure only admins can access the view"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, "Please login to access this page.")
+            return redirect("login")
+        if not request.user.is_superuser:
+            messages.error(request, "Access denied. This page is only for administrators.")
+            return redirect(get_dashboard_name(request.user))
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def mediator_or_admin_required(view_func):
+    """Decorator to ensure only mediators or admins can access the view"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, "Please login to access this page.")
+            return redirect("login")
+        if not (is_mediator(request.user) or request.user.is_superuser):
+            messages.error(request, "Access denied. This page is only for mediators or administrators.")
+            return redirect(get_dashboard_name(request.user))
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def doctor_or_admin_required(view_func):
+    """Decorator to ensure only doctors or admins can access the view"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, "Please login to access this page.")
+            return redirect("login")
+        if not (is_doctor(request.user) or request.user.is_superuser):
+            messages.error(request, "Access denied. This page is only for doctors or administrators.")
+            return redirect(get_dashboard_name(request.user))
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 def mediator_only(request):
     if request.user.is_superuser:
         return False
@@ -458,55 +538,296 @@ def admin_dashboard(request):
     })
 
 
-# ---------------- MEDIATOR ACCEPT ----------------
+# ==================== APPOINTMENT STATUS LIFECYCLE VIEWS ====================
+
+# ---------------- MEDIATOR: ASSIGN DOCTOR (Requested → Assigned) ----------------
 @login_required
 @require_POST
-def accept(request, id):
-    denied_response = mediator_only(request)
+def assign_doctor_view(request, appointment_id):
+    """
+    Mediator assigns a doctor to an appointment.
+    Transitions: Requested → Assigned
+    """
+    denied_response = mediator_or_admin_required(request)
     if denied_response:
         return denied_response
 
-    appointment = get_object_or_404(Appointment, id=id)
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    # Validate transition
+    if not appointment.can_transition_to("Assigned"):
+        messages.error(request, f"Cannot assign doctor. Current status: {appointment.status}")
+        return redirect("mediator-dashboard")
+
+    doctor_id = request.POST.get("doctor_id")
+    if not doctor_id:
+        messages.error(request, "Please select a doctor.")
+        return redirect("mediator-dashboard")
+
+    doctor = get_object_or_404(Doctor, id=doctor_id)
+    
+    # Update appointment
+    appointment.doctor = doctor
+    appointment.status = "Assigned"
+    appointment.save()
+
+    # Create notifications
+    create_notification(appointment.patient.user, f"Your appointment has been assigned to Dr. {doctor.user.username}.")
+    
+    if doctor.user:
+        create_notification(
+            doctor.user,
+            f"You have been assigned a new appointment with {appointment.patient.user.username}."
+        )
+
+    messages.success(request, f"Doctor assigned successfully to appointment #{appointment.id}")
+    return redirect("mediator-dashboard")
+
+
+# ---------------- DOCTOR: ACCEPT APPOINTMENT (Assigned → Accepted) ----------------
+@login_required
+@require_POST
+def doctor_accept_appointment(request, appointment_id):
+    """
+    Doctor accepts an appointment.
+    Transitions: Assigned → Accepted
+    """
+    if not is_doctor(request.user):
+        messages.error(request, "Only doctors can accept appointments.")
+        return redirect(get_dashboard_name(request.user))
+
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    # Verify this doctor is assigned to this appointment
+    if appointment.doctor != request.user.doctor:
+        messages.error(request, "You are not authorized to accept this appointment.")
+        return redirect("doctor-dashboard")
+    
+    # Validate transition
+    if not appointment.can_transition_to("Accepted"):
+        messages.error(request, f"Cannot accept appointment. Current status: {appointment.status}")
+        return redirect("doctor-dashboard")
+
+    # Update status
     appointment.status = "Accepted"
     appointment.save()
 
-    create_notification(appointment.patient.user, "Your appointment request has been accepted.")
+    # Create notifications
+    create_notification(appointment.patient.user, "Your appointment has been accepted by the doctor.")
+    
+    for mediator in Mediator.objects.select_related("user"):
+        create_notification(mediator.user, f"Doctor accepted appointment #{appointment.id}")
 
-    if appointment.doctor:
-        create_notification(
-            appointment.doctor.user,
-            f"Appointment for {appointment.patient.user.username} was accepted by mediator."
-        )
-
-    return redirect("mediator-dashboard")
+    messages.success(request, "Appointment accepted successfully.")
+    return redirect("doctor-dashboard")
 
 
-# ---------------- MEDIATOR REJECT ----------------
+# ---------------- DOCTOR: REJECT APPOINTMENT (Assigned → Cancelled) ----------------
 @login_required
 @require_POST
-def reject(request, id):
-    denied_response = mediator_only(request)
+def doctor_reject_appointment(request, appointment_id):
+    """
+    Doctor rejects an appointment.
+    Transitions: Assigned → Cancelled
+    """
+    if not is_doctor(request.user):
+        messages.error(request, "Only doctors can reject appointments.")
+        return redirect(get_dashboard_name(request.user))
+
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    # Verify this doctor is assigned to this appointment
+    if appointment.doctor != request.user.doctor:
+        messages.error(request, "You are not authorized to reject this appointment.")
+        return redirect("doctor-dashboard")
+    
+    # Validate transition
+    if not appointment.can_transition_to("Cancelled"):
+        messages.error(request, f"Cannot reject appointment. Current status: {appointment.status}")
+        return redirect("doctor-dashboard")
+
+    # Update status
+    appointment.status = "Cancelled"
+    appointment.save()
+
+    # Create notifications
+    create_notification(appointment.patient.user, "Your appointment has been rejected by the doctor.")
+    
+    for mediator in Mediator.objects.select_related("user"):
+        create_notification(mediator.user, f"Doctor rejected appointment #{appointment.id}")
+
+    messages.success(request, "Appointment rejected.")
+    return redirect("doctor-dashboard")
+
+
+# ---------------- MEDIATOR/ADMIN: COMPLETE APPOINTMENT (Accepted → Completed) ----------------
+@login_required
+@require_POST
+def complete_appointment(request, appointment_id):
+    """
+    Mediator or Admin marks an appointment as completed.
+    Transitions: Accepted → Completed
+    """
+    denied_response = mediator_or_admin_required(request)
+    if denied_response:
+        return denied_response
+
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    # Validate transition
+    if not appointment.can_transition_to("Completed"):
+        messages.error(request, f"Cannot complete appointment. Current status: {appointment.status}")
+        return redirect(get_dashboard_name(request.user))
+
+    # Update status
+    appointment.status = "Completed"
+    appointment.save()
+
+    # Create notifications
+    create_notification(appointment.patient.user, "Your appointment has been marked as completed.")
+    
+    if appointment.doctor:
+        create_notification(appointment.doctor.user, f"Appointment #{appointment.id} has been marked as completed.")
+
+    messages.success(request, f"Appointment #{appointment.id} marked as completed.")
+    return redirect(get_dashboard_name(request.user))
+
+
+# ---------------- PATIENT: CANCEL APPOINTMENT (Any non-terminal status → Cancelled) ----------------
+@login_required
+def patient_cancel_appointment(request, appointment_id):
+    """
+    Patient cancels their own appointment.
+    Transitions: Requested/Assigned → Cancelled (not Accepted/Completed)
+    """
+    if not is_patient(request.user):
+        messages.error(request, "Only patients can cancel their own appointments.")
+        return redirect(get_dashboard_name(request.user))
+
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id,
+        patient=request.user.patient,
+    )
+    
+    # Validate transition - patient can only cancel before completion
+    if not appointment.can_transition_to("Cancelled"):
+        messages.error(request, f"Cannot cancel appointment. Current status: {appointment.status}")
+        return redirect("patient-dashboard")
+
+    # Update status
+    appointment.status = "Cancelled"
+    appointment.save()
+
+    # Create notifications
+    for admin in User.objects.filter(is_superuser=True):
+        create_notification(admin, f"{request.user.username} cancelled appointment #{appointment.id}")
+
+    for mediator in Mediator.objects.select_related("user"):
+        create_notification(mediator.user, f"{request.user.username} cancelled appointment #{appointment.id}")
+
+    if appointment.doctor:
+        create_notification(appointment.doctor.user, f"Patient cancelled appointment #{appointment.id}")
+
+    messages.success(request, "Appointment cancelled successfully.")
+    return redirect("patient-dashboard")
+
+
+# ---------------- MEDIATOR/ADMIN: CANCEL APPOINTMENT ----------------
+@login_required
+@require_POST
+def mediator_cancel_appointment(request, appointment_id):
+    """
+    Mediator or Admin cancels an appointment.
+    Transitions: Any non-terminal → Cancelled
+    """
+    denied_response = mediator_or_admin_required(request)
+    if denied_response:
+        return denied_response
+
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    # Validate transition
+    if not appointment.can_transition_to("Cancelled"):
+        messages.error(request, f"Cannot cancel appointment. Current status: {appointment.status}")
+        return redirect(get_dashboard_name(request.user))
+
+    # Update status
+    appointment.status = "Cancelled"
+    appointment.save()
+
+    # Create notifications
+    create_notification(appointment.patient.user, f"Your appointment #{appointment.id} has been cancelled by the mediator.")
+    
+    if appointment.doctor:
+        create_notification(appointment.doctor.user, f"Appointment #{appointment.id} has been cancelled by the mediator.")
+
+    messages.success(request, f"Appointment #{appointment.id} cancelled.")
+    return redirect(get_dashboard_name(request.user))
+
+
+# ==================== LEGACY VIEWS (Updated for new lifecycle) ====================
+
+# ---------------- MEDIATOR ACCEPT (Legacy - Updated) ----------------
+@login_required
+@require_POST
+def accept(request, id):
+    """Legacy accept view - redirects to new workflow"""
+    denied_response = mediator_or_admin_required(request)
     if denied_response:
         return denied_response
 
     appointment = get_object_or_404(Appointment, id=id)
-    appointment.status = "Rejected"
-    appointment.save()
-
-    create_notification(appointment.patient.user, "Your appointment request has been rejected.")
-
-    if appointment.doctor:
-        create_notification(
-            appointment.doctor.user,
-            f"Appointment for {appointment.patient.user.username} was rejected by mediator."
-        )
+    
+    # If no doctor assigned, assign first
+    if not appointment.doctor and appointment.status == "Requested":
+        # Find first available verified doctor
+        doctor = Doctor.objects.filter(is_verified=True).first()
+        if doctor:
+            appointment.doctor = doctor
+            appointment.status = "Assigned"
+            appointment.save()
+            create_notification(appointment.patient.user, f"Your appointment has been assigned to Dr. {doctor.user.username}.")
+            messages.success(request, "Appointment accepted and doctor assigned.")
+        else:
+            messages.error(request, "No verified doctors available.")
+    elif appointment.status == "Assigned":
+        appointment.status = "Accepted"
+        appointment.save()
+        create_notification(appointment.patient.user, "Your appointment request has been accepted.")
+        messages.success(request, "Appointment accepted.")
+    else:
+        messages.error(request, f"Cannot accept appointment in {appointment.status} status.")
 
     return redirect("mediator-dashboard")
 
 
-# ---------------- PATIENT CANCEL ----------------
+# ---------------- MEDIATOR REJECT (Legacy - Updated) ----------------
+@login_required
+@require_POST
+def reject(request, id):
+    """Legacy reject view - redirects to new workflow"""
+    denied_response = mediator_or_admin_required(request)
+    if denied_response:
+        return denied_response
+
+    appointment = get_object_or_404(Appointment, id=id)
+    
+    if appointment.can_transition_to("Cancelled"):
+        appointment.status = "Cancelled"
+        appointment.save()
+        create_notification(appointment.patient.user, "Your appointment request has been rejected.")
+        messages.success(request, "Appointment rejected.")
+    else:
+        messages.error(request, f"Cannot reject appointment in {appointment.status} status.")
+
+    return redirect("mediator-dashboard")
+
+
+# ---------------- PATIENT CANCEL (Legacy) ----------------
 @login_required
 def cancel_appointment(request, appointment_id):
+    """Legacy cancel view - redirects to new workflow"""
     if not is_patient(request.user):
         return HttpResponseForbidden("Only patients can cancel their appointments from this page.")
 
@@ -515,14 +836,20 @@ def cancel_appointment(request, appointment_id):
         id=appointment_id,
         patient=request.user.patient,
     )
-    appointment.status = "Cancelled"
-    appointment.save()
+    
+    if appointment.can_transition_to("Cancelled"):
+        appointment.status = "Cancelled"
+        appointment.save()
 
-    for admin in User.objects.filter(is_superuser=True):
-        create_notification(admin, f"{request.user.username} cancelled an appointment")
+        for admin in User.objects.filter(is_superuser=True):
+            create_notification(admin, f"{request.user.username} cancelled an appointment")
 
-    for mediator in Mediator.objects.select_related("user"):
-        create_notification(mediator.user, f"{request.user.username} cancelled an appointment")
+        for mediator in Mediator.objects.select_related("user"):
+            create_notification(mediator.user, f"{request.user.username} cancelled an appointment")
+
+        messages.success(request, "Appointment cancelled successfully.")
+    else:
+        messages.error(request, f"Cannot cancel appointment in {appointment.status} status.")
 
     return redirect("patient-dashboard")
 

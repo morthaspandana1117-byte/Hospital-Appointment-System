@@ -39,4 +39,21 @@ urlpatterns = [
     path('manage-users/', views.manage_users, name='manage-users'),
     path('delete-user/<int:user_id>/', views.delete_user, name='delete-user'),
     path('confirm-token/<int:id>/', views.confirm_token, name='confirm-token'),
+
+    # ==================== Appointment Status Lifecycle URLs ====================
+    # Mediator/Admin: Assign doctor (Requested → Assigned)
+    path('appointments/<int:appointment_id>/assign-doctor/', views.assign_doctor_view, name='assign-doctor-view'),
+    
+    # Doctor: Accept/Reject appointment (Assigned → Accepted/Cancelled)
+    path('appointments/<int:appointment_id>/accept/', views.doctor_accept_appointment, name='doctor-accept-appointment'),
+    path('appointments/<int:appointment_id>/reject/', views.doctor_reject_appointment, name='doctor-reject-appointment'),
+    
+    # Mediator/Admin: Complete appointment (Accepted → Completed)
+    path('appointments/<int:appointment_id>/complete/', views.complete_appointment, name='complete-appointment'),
+    
+    # Patient: Cancel own appointment
+    path('appointments/<int:appointment_id>/cancel/', views.patient_cancel_appointment, name='patient-cancel-appointment'),
+    
+    # Mediator/Admin: Cancel any appointment
+    path('appointments/<int:appointment_id>/mediator-cancel/', views.mediator_cancel_appointment, name='mediator-cancel-appointment'),
 ]

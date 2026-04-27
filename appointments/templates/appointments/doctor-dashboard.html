@@ -6,6 +6,30 @@
     <title>Doctor Dashboard</title>
     <link rel="stylesheet" href="{% static 'appointments/css/styles.css' %}">
     <link rel="stylesheet" href="{% static 'appointments/css/styles_profile.css' %}">
+    <style>
+        /* Chat badge button styling */
+        .chat-badge-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .chat-badge-btn .badge {
+            background: #fff;
+            color: #27ae60;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .no-unread {
+            color: #666;
+            font-style: italic;
+            padding: 12px 20px;
+        }
+    </style>
 </head>
 <body>
 
@@ -37,8 +61,10 @@
         </a>
         
         {% if unread_messages_count > 0 %}
-        <a href="#" class="btn btn-primary" onclick="document.getElementById('messages-dropdown').classList.toggle('show'); return false;">
-            Messages <span class="badge">{{ unread_messages_count }}</span>
+        <a href="#" onclick="document.getElementById('messages-dropdown').classList.toggle('show'); return false;">
+            <button class="btn btn-primary chat-badge-btn">
+                Messages <span class="badge">{{ unread_messages_count }}</span>
+            </button>
         </a>
         <div id="messages-dropdown" class="chat-dropdown">
             <h4>Unread Messages</h4>
@@ -77,7 +103,17 @@
             </td>
             <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
             <td>
-                {% if appointment.status == "Accepted" or appointment.status == "Confirmed" %}
+                {% if appointment.status == "Assigned" %}
+                    {# Doctor can accept or reject assigned appointments #}
+                    <form method="post" action="{% url 'doctor-accept-appointment' appointment.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success">Accept</button>
+                    </form>
+                    <form method="post" action="{% url 'doctor-reject-appointment' appointment.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </form>
+                {% elif appointment.status == "Accepted" %}
                     <a href="{% url 'chat' appointment.id %}">
                         <button class="btn btn-primary" type="button">
                             Chat
@@ -86,8 +122,12 @@
                             {% endif %}
                         </button>
                     </a>
+                {% elif appointment.status == "Completed" %}
+                    <a href="{% url 'chat' appointment.id %}">
+                        <button class="btn btn-primary" type="button">View Chat</button>
+                    </a>
                 {% else %}
-                    Not available
+                    <span style="color: #ccc;">Not available</span>
                 {% endif %}
             </td>
             <td>

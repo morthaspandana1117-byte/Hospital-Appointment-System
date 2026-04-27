@@ -37,17 +37,36 @@ class Mediator(models.Model):
 
 
 class Appointment(models.Model):
+    # New status lifecycle: Requested → Assigned → Accepted → Completed → Cancelled
     STATUS_CHOICES = [
-        ("Pending", "Pending"),
+        ("Requested", "Requested"),
+        ("Assigned", "Assigned"),
         ("Accepted", "Accepted"),
-        ("Rejected", "Rejected"),
+        ("Completed", "Completed"),
         ("Cancelled", "Cancelled"),
-        ("Confirmed", "Confirmed"),
     ]
+    # Legacy status mapping for backward compatibility
+    LEGACY_STATUS_MAP = {
+        "Pending": "Requested",
+        "Accepted": "Accepted",
+        "Rejected": "Cancelled",
+        "Confirmed": "Accepted",
+        "Cancelled": "Cancelled",
+    }
     PRIORITY_CHOICES = [
         ("Normal", "Normal"),
         ("Emergency", "Emergency"),
     ]
+    
+    # Valid status transitions based on role-based workflow
+    VALID_TRANSITIONS = {
+        # Patient can create and cancel
+        "Requested": ["Assigned", "Cancelled"],
+        "Assigned": ["Accepted", "Cancelled"],
+        "Accepted": ["Completed", "Cancelled"],
+        "Completed": [],  # Terminal state
+        "Cancelled": [],  # Terminal state
+    }
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     problem = models.TextField()
@@ -55,7 +74,7 @@ class Appointment(models.Model):
     time = models.TimeField(null=True, blank=True)
     date = models.DateField(null=True, blank=True)
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default="Normal")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Requested")
     token_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
     is_token_generated = models.BooleanField(default=False)
     is_token_confirmed = models.BooleanField(default=False)
@@ -74,12 +93,50 @@ class Appointment(models.Model):
             ).exclude(
                 id=self.id
             ).exclude(
-                status__in=["Cancelled", "Rejected"]
+                status__in=["Cancelled"]
             )
             if conflicting_appointment.exists():
                 raise ValidationError({
                     "time": "This time slot is already booked"
                 })
+
+    def can_transition_to(self, new_status):
+        """Check if transition to new_status is valid"""
+        return new_status in self.VALID_TRANSITIONS.get(self.status, [])
+    
+    def get_allowed_transitions(self):
+        """Get list of allowed status transitions from current state"""
+        return self.VALID_TRANSITIONS.get(self.status, [])
+    
+    def transition_to(self, new_status, user=None):
+        """
+        Safely transition to a new status with validation.
+        Returns (success, error_message)
+        """
+        if not self.can_transition_to(new_status):
+            return False, f"Invalid status transition from {self.status} to {new_status}"
+        
+        old_status = self.status
+        self.status = new_status
+        self.save()
+        
+        # Create notification for status change
+        try:
+            from .models import Notification
+            if self.patient and self.patient.user:
+                Notification.objects.create(
+                    user=self.patient.user,
+                    message=f"Your appointment status changed from {old_status} to {new_status}"
+                )
+            if self.doctor and self.doctor.user:
+                Notification.objects.create(
+                    user=self.doctor.user,
+                    message=f"Appointment status changed from {old_status} to {new_status}"
+                )
+        except:
+            pass  # Ignore notification errors
+        
+        return True, None
 
     def save(self, *args, **kwargs):
         if self.is_token_generated and not self.token_number:

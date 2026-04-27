@@ -76,6 +76,13 @@
         .status-card.rejected p { color: #d9534f; }
         .status-card.confirmed p { color: #5cb85c; }
         .status-card.cancelled p { color: #777; }
+        
+        /* Smaller button style for Update Profile */
+        .dashboard-actions .btn-sm {
+            padding: 10px 24px;
+            min-width: 140px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -273,11 +280,11 @@
 
     <div class="dashboard-actions">
         <a href="{% url 'profile' %}">
-            <button class="btn btn-primary">Update Profile</button>
+            <button class="btn btn-primary btn-sm">Update Profile</button>
         </a>
 
         <a href="{% url 'logout' %}">
-            <button class="btn btn-danger">Logout</button>
+            <button class="btn btn-danger btn-sm">Logout</button>
         </a>
     </div>
 </div>

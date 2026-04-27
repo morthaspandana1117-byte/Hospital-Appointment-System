@@ -88,17 +88,24 @@
             </td>
             <td><span class="status status-{{ appointment.status|lower }}">{{ appointment.status }}</span></td>
             <td>
-                {% if appointment.status == "Pending" %}
-                    <a href="{% url 'cancel-appointment' appointment.id %}">
-                        <button>Cancel</button>
+                {% if appointment.status == "Requested" or appointment.status == "Assigned" %}
+                    <a href="{% url 'patient-cancel-appointment' appointment.id %}" 
+                       onclick="return confirm('Are you sure you want to cancel this appointment?');">
+                        <button class="btn btn-danger">Cancel</button>
                     </a>
+                {% elif appointment.status == "Accepted" %}
+                    <span class="status status-accepted">In Progress</span>
+                {% elif appointment.status == "Completed" %}
+                    <span class="status status-completed">Completed</span>
+                {% elif appointment.status == "Cancelled" %}
+                    <span class="status status-cancelled">Cancelled</span>
                 {% else %}
                     -
                 {% endif %}
             </td>
             <td>
                 {% if appointment.doctor %}
-                    {% if appointment.status == "Accepted" or appointment.status == "Confirmed" %}
+                    {% if appointment.status == "Accepted" or appointment.status == "Completed" %}
                     <a href="{% url 'chat' appointment.id %}">
                         <button class="btn btn-primary" type="button">
                             Chat
@@ -108,10 +115,10 @@
                         </button>
                     </a>
                     {% else %}
-                        Not available
+                        <span style="color: #ccc;">Not available</span>
                     {% endif %}
                 {% else %}
-                    Not available
+                    <span style="color: #ccc;">Not available</span>
                 {% endif %}
             </td>
             <td>
